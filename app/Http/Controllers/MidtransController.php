@@ -3,41 +3,67 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Pembayaran;
+use Midtrans\Snap;
+use Midtrans\Config;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MidtransController extends Controller
 {
+    public function __construct()
+    {
+        // $this->middleware('auth'); // jika diperlukan
+    }
+
+    /**
+     * Endpoint untuk Generate Snap Token dan redirect ke Snap Payment
+     * Route: POST /bayar-midtrans
+     */
     public function pay(Request $request)
     {
-        // Set API Key dan konfigurasi Midtrans
-        \Midtrans\Config::$serverKey = config('midtrans.server_key');
-        \Midtrans\Config::$isProduction = config('midtrans.isProduction');
-        \Midtrans\Config::$isSanitized = config('midtrans.isSanitized');
-        \Midtrans\Config::$is3ds = config('midtrans.is3ds');
-
-        // Generate order ID dan ambil jumlah dari request
-        $orderId = uniqid();
-        $amount = $request->amount;
-
-        /** @var \App\Models\User $user */
         $user = Auth::user();
+        $idPembayaran = $request->input('pembayaran_id');
+        $pembayaran   = Pembayaran::where('id', $idPembayaran)
+                                  ->where('kelas', $user->kelas)
+                                  ->firstOrFail();
 
-        // Set parameter transaksi untuk Midtrans
+        // Load konfigurasi Midtrans
+        Config::$serverKey    = config('midtrans.midtrans.server_key');
+        Config::$isProduction = config('midtrans.midtrans.is_production');
+        Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
+        Config::$is3ds        = config('midtrans.midtrans.is_3ds');
+
+        // Persiapkan parameter
+        $orderId = 'ORDER-' . $pembayaran->id . '-USER-' . $user->id . '-' . time();
         $params = [
             'transaction_details' => [
-                'order_id' => $orderId,
-                'gross_amount' => $amount,
+                'order_id'     => $orderId,
+                'gross_amount' => $pembayaran->jumlah,
             ],
-            'customer_details' => [
+            'customer_details'    => [
                 'first_name' => $user->name,
-                'email' => $user->email,
+                'email'      => $user->email ?? 'guest@example.com',
             ],
+            'enabled_payments'    => ['bank_transfer', 'gopay', 'credit_card'],
         ];
 
-        // Dapatkan Snap Token dari Midtrans
-        $snapToken = \Midtrans\Snap::getSnapToken($params);
+        try {
+            $snapToken = Snap::getSnapToken($params);
 
-        // Kirim Snap Token ke view
-        return view('siswa.midtrans_payment', compact('snapToken', 'user'));
+            // Simpan data pivot dengan status menunggu-pembayaran
+            $pembayaran->siswa()->syncWithoutDetaching([
+                $user->id => [
+                    'status'             => 'menunggu-pembayaran',
+                    'order_id_midtrans'  => $orderId, // kolom tambahan jika perlu
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Midtrans Snap Token Error (pay): " . $e->getMessage());
+            return back()->with('error', 'Gagal memproses Midtrans: ' . $e->getMessage());
+        }
+
+        // Kirim snapToken ke view untuk dipanggil snap.pay() via JS
+        return view('siswa.pembayaran.redirect', compact('snapToken', 'orderId'));
     }
 }

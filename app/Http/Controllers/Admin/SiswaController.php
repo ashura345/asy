@@ -5,82 +5,89 @@ namespace App\Http\Controllers\Admin;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\Controller; // Make sure to import the Controller class
+use App\Http\Controllers\Controller;
 
 class SiswaController extends Controller
 {
-    // Display a listing of the users
-    public function index()
+    // Tampilkan daftar siswa dengan fitur pencarian & pagination
+    public function index(Request $request)
     {
-        $users = User::all(); // Fetch all users from the database
-        return view('users.index', compact('users')); // Return the view with users data
+        $query = User::where('role', 'siswa');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('nis', 'like', "%{$search}%")
+                  ->orWhere('kelas', 'like', "%{$search}%");
+            });
+        }
+
+        $siswas = $query->orderBy('name')->paginate(10); // Pagination 10 data per halaman
+        return view('admin.siswa.index', compact('siswas'));
     }
 
-    // Show the form for creating a new user
+    // Form tambah siswa
     public function create()
     {
-        return view('users.create'); // Return the user creation view
+        return view('admin.siswa.create');
     }
 
-    // Store a newly created user in the database
+    // Simpan siswa baru
     public function store(Request $request)
     {
-        $request->validate([ // Validate the incoming data
+        $request->validate([
             'name' => 'required',
             'email' => 'nullable|email|unique:users,email',
             'nis' => 'nullable|unique:users,nis',
             'password' => 'required|min:6',
         ]);
 
-        // Create a new user in the database
         User::create([
             'name' => $request->name,
             'nis' => $request->nis,
             'kelas' => $request->kelas,
-            'role' => $request->role ?? 'siswa', // Default role is 'siswa'
+            'role' => $request->role ?? 'siswa',
             'tahun_ajaran' => $request->tahun_ajaran,
             'email' => $request->email,
-            'password' => Hash::make($request->password), // Encrypt the password
+            'password' => Hash::make($request->password),
         ]);
 
-        // Redirect back to the users index page with a success message
-        return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
+        return redirect()->route('admin.siswa.index')->with('success', 'Siswa berhasil ditambahkan.');
     }
 
-    // Show the form for editing a user
-    public function edit(User $user)
+    // Form edit siswa
+    public function edit(User $siswa)
     {
-        return view('users.edit', compact('user')); // Return the user edit view with the user's data
+        return view('admin.siswa.edit', compact('siswa'));
     }
 
-    // Update the specified user in the database
-    public function update(Request $request, User $user)
+    // Update data siswa
+    public function update(Request $request, User $siswa)
     {
-        $request->validate([ // Validate the incoming data
+        $request->validate([
             'name' => 'required',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
-            'nis' => 'nullable|unique:users,nis,' . $user->id,
+            'email' => 'nullable|email|unique:users,email,' . $siswa->id,
+            'nis' => 'nullable|unique:users,nis,' . $siswa->id,
         ]);
 
-        // Update the user's data in the database
-        $user->update([
+        $siswa->update([
             'name' => $request->name,
             'nis' => $request->nis,
             'kelas' => $request->kelas,
-            'role' => $request->role ?? 'siswa', // Default role is 'siswa'
+            'role' => $request->role ?? 'siswa',
             'tahun_ajaran' => $request->tahun_ajaran,
             'email' => $request->email,
-            'password' => $request->password ? Hash::make($request->password) : $user->password, // Only update password if provided
+            'password' => $request->password ? Hash::make($request->password) : $siswa->password,
         ]);
 
-        // Redirect back to the users index page with a success message
-        return redirect()->route('users.index')->with('success', 'User berhasil diperbarui.');
+        return redirect()->route('admin.siswa.index')->with('success', 'Siswa berhasil diperbarui.');
     }
 
-    // Remove the specified user from the database
-    public function destroy(User $user)
+    // Hapus siswa
+    public function destroy(User $siswa)
     {
-        $user->delete(); // Delete the user
-        return redirect()->route('users.index')->with('success', 'User berhasil dihapus.'); // Redirect back with a success message
+        $siswa->delete();
+        return redirect()->route('admin.siswa.index')->with('success', 'Siswa berhasil dihapus.');
     }
 }

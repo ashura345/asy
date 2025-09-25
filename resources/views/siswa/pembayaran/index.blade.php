@@ -1,188 +1,103 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pembayaran</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #b0e2c1;
-            padding: 50px;
-        }
+@extends('layouts.admin')
 
-        .container {
-            max-width: 500px;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        }
+@section('title', 'Daftar Tagihan Pembayaran')
 
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+@section('content')
+<div class="container mx-auto px-4 mt-6">
+    <h1 class="text-2xl font-bold mb-6">Daftar Tagihan Pembayaran</h1>
 
-        .siswa-info {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .siswa-info img {
-            width: 80px;
-            height: 100px;
-            object-fit: cover;
-            background: #ccc;
-            display: block;
-            margin: 0 auto 10px;
-        }
-
-        .siswa-info .nama {
-            font-weight: bold;
-        }
-
-        .siswa-info .nis {
-            font-size: 14px;
-            color: #444;
-        }
-
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 20px;
-        }
-
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            background: #eee;
-        }
-
-        .metode-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-        }
-
-        .metode-card {
-            flex: 1;
-            background-color: #f1f1f1;
-            margin: 5px;
-            padding: 15px;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: 0.3s;
-        }
-
-        .metode-card:hover {
-            border-color: #4CAF50;
-            background-color: #e0ffe0;
-        }
-
-        .metode-card.active {
-            border-color: #4CAF50;
-            background-color: #c6f7c6;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 30px;
-            background-color: #1e70ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #155bd4;
-        }
-
-        input[type="radio"] {
-            display: none;
-        }
-
-        .total {
-            margin-top: 20px;
-            font-weight: bold;
-            font-size: 18px;
-            color: #333;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Pembayaran</h2>
-
-        <div class="siswa-info">
-            <img src="https://via.placeholder.com/80x100?text=Foto+siswa" alt="Foto Siswa">
-            <div class="nama">Tsaltsa Sifa Bilqis Salaamah</div>
-            <div class="nis">NIS : 1234567 | Kelas 1</div>
+    @if(session('success'))
+        <div class="bg-green-200 text-green-800 px-4 py-2 rounded mb-4">
+            {{ session('success') }}
         </div>
+    @endif
 
-        <form method="POST" action="{{ route('pembayaran.proses') }}">
-            @csrf
+    <div class="overflow-x-auto rounded shadow border border-gray-300">
+        <table class="min-w-full bg-white">
+            <thead class="bg-blue-100 text-left">
+                <tr>
+                    <th class="py-3 px-4 border-b">#</th>
+                    <th class="py-3 px-4 border-b">Nama Pembayaran</th>
+                    <th class="py-3 px-4 border-b">Kelas</th>
+                    <th class="py-3 px-4 border-b">Total</th>
+                    <th class="py-3 px-4 border-b">Tanggal Jatuh Tempo</th>
+                    <th class="py-3 px-4 border-b">Status</th>
+                    <th class="py-3 px-4 border-b">Metode Pembayaran</th>
+                    <th class="py-3 px-4 border-b">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($tagihans as $index => $pembayaran)
+                    @php
+                        // Ambil pivot data untuk user sekarang (jika ada)
+                        $pivot = $pembayaran->siswa()
+                                            ->where('user_id', Auth::id())
+                                            ->first()
+                                            ?->pivot;
 
-            <label for="kategori">Pilih Jenis Pembayaran</label>
-            <select name="kategori" id="kategori" required onchange="updateTotal()">
-                <option value="SPP">SPP - Rp 300.000</option>
-                <option value="Seragam">Seragam - Rp 450.000</option>
-                <option value="Ijazah">Ijazah - Rp 200.000</option>
-            </select>
+                        // Jika belum pernah bayar, set default status & metode
+                        $statusPivot = $pivot?->status ?? 'menunggu-pembayaran';
+                        $metodePivot = $pivot?->metode ?? null;
+                    @endphp
+                    <tr class="hover:bg-gray-50">
+                        {{-- Penomoran cukup pakai $index + 1 --}}
+                        <td class="py-2 px-4 border-b">{{ $index + 1 }}</td>
 
-            <div class="total" id="totalHarga">Total: Rp 300.000</div>
-
-            <label for="metode">Pilih Metode Pembayaran</label>
-            <div class="metode-container">
-                <label class="metode-card" id="tunaiCard">
-                    <input type="radio" name="metode" value="tunai" required>
-                    Tunai
-                </label>
-                <label class="metode-card" id="transferCard">
-                    <input type="radio" name="metode" value="transfer" required>
-                    Transfer
-                </label>
-            </div>
-
-            <button type="submit">Konfirmasi</button>
-        </form>
+                        <td class="py-2 px-4 border-b">{{ $pembayaran->nama }}</td>
+                        <td class="py-2 px-4 border-b">{{ $pembayaran->kelas }}</td>
+                        <td class="py-2 px-4 border-b">
+                            Rp {{ number_format($pembayaran->jumlah, 0, ',', '.') }}
+                        </td>
+                        <td class="py-2 px-4 border-b">
+                            {{ \Carbon\Carbon::parse($pembayaran->tanggal_tempo)->format('d-m-Y') }}
+                        </td>
+                        <td class="py-2 px-4 border-b">
+                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold
+                                {{ $statusPivot == 'lunas' ? 'bg-green-200 text-green-800' : '' }}
+                                {{ $statusPivot == 'menunggu-verifikasi' ? 'bg-yellow-200 text-yellow-800' : '' }}
+                                {{ $statusPivot == 'menunggu-pembayaran' ? 'bg-blue-200 text-blue-800' : '' }}
+                                {{ $statusPivot == 'dibatalkan' ? 'bg-red-200 text-red-800' : '' }}
+                                {{ !in_array($statusPivot, ['lunas','menunggu-verifikasi','menunggu-pembayaran','dibatalkan']) ? 'bg-gray-200 text-gray-800' : '' }}
+                            ">
+                                {{ ucfirst(str_replace('-', ' ', $statusPivot)) }}
+                            </span>
+                        </td>
+                        <td class="py-2 px-4 border-b">
+                            {{ $metodePivot ? ucfirst(str_replace('-', ' ', $metodePivot)) : '-' }}
+                        </td>
+                        <td class="py-2 px-4 border-b space-x-2">
+                            @if ($statusPivot == 'menunggu-pembayaran' || $statusPivot == 'dibatalkan')
+                                <a href="{{ route('siswa.pembayaran.show', $pembayaran->id) }}"
+                                   class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                   Lihat / Bayar
+                                </a>
+                            @elseif ($statusPivot == 'menunggu-verifikasi')
+                                <span class="text-yellow-600 font-semibold text-sm">
+                                    Menunggu Verifikasi
+                                </span>
+                            @else
+                                <span class="text-gray-600 font-semibold text-sm">
+                                    Selesai
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="py-4 text-center text-gray-500">
+                            Tidak ada tagihan pembayaran untuk kelas Anda.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 
-    <script>
-        const hargaMap = {
-            'SPP': 300000,
-            'Seragam': 450000,
-            'Ijazah': 200000
-        };
-
-        const kategoriSelect = document.getElementById('kategori');
-        const totalHarga = document.getElementById('totalHarga');
-
-        function updateTotal() {
-            const selected = kategoriSelect.value;
-            const harga = hargaMap[selected] || 0;
-            totalHarga.innerText = 'Total: Rp ' + harga.toLocaleString('id-ID');
-        }
-
-        // Inisialisasi awal
-        updateTotal();
-
-        const cards = document.querySelectorAll('.metode-card');
-        cards.forEach(card => {
-            card.addEventListener('click', () => {
-                cards.forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                card.querySelector('input').checked = true;
-            });
-        });
-    </script>
-</body>
-</html>
+    {{-- Jika Anda tidak menggunakan paginate(), baris pagination ini bisa dihapus/ dikomentar --}}
+    {{--
+    <div class="mt-4">
+        {{ $tagihans->withQueryString()->links() }}
+    </div>
+    --}}
+</div>
+@endsection

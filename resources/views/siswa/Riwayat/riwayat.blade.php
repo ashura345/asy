@@ -1,41 +1,57 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+@section('title', 'Riwayat Pembayaran')
 
 @section('content')
-<div class="p-6">
-    <h2 class="text-2xl font-bold mb-4">Riwayat Pembayaran</h2>
+<div class="container mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-6">Riwayat Pembayaran Saya</h1>
 
-    <table class="min-w-full bg-white border rounded-lg shadow-md">
-        <thead class="bg-gray-100">
-            <tr>
-                <th class="px-4 py-2 border">Tanggal</th>
-                <th class="px-4 py-2 border">Kategori</th>
-                <th class="px-4 py-2 border">Jumlah</th>
-                <th class="px-4 py-2 border">Metode</th>
-                <th class="px-4 py-2 border">Status</th>
-                <th class="px-4 py-2 border">Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($riwayat as $pembayaran)
-            <tr>
-                <td class="px-4 py-2 border">{{ $pembayaran->tanggal_pembayaran }}</td>
-                <td class="px-4 py-2 border">{{ $pembayaran->kategori }}</td>
-                <td class="px-4 py-2 border">Rp {{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                <td class="px-4 py-2 border">{{ ucfirst($pembayaran->metode) }}</td>
-                <td class="px-4 py-2 border">{{ $pembayaran->status_pembayaran }}</td>
-                <td class="px-4 py-2 border">
-                    <a href="{{ route('riwayat.cetak', $pembayaran->id) }}" target="_blank"
-                       class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded">
-                        Cetak Struk
-                    </a>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="text-center py-4">Belum ada riwayat pembayaran.</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    @if($riwayatBayar->isEmpty())
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+            <p class="font-bold">Belum ada pembayaran yang lunas</p>
+        </div>
+    @else
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 border-b text-left">#</th>
+                        <th class="px-4 py-2 border-b text-left">Nama Pembayaran</th>
+                        <th class="px-4 py-2 border-b text-left">Jumlah</th>
+                        <th class="px-4 py-2 border-b text-left">Tanggal Bayar</th>
+                        <th class="px-4 py-2 border-b text-left">Metode</th>
+                        <th class="px-4 py-2 border-b text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($riwayatBayar as $index => $row)
+                        <tr class="{{ $index % 2 == 0 ? 'bg-white' : 'bg-gray-50' }}">
+                            <td class="px-4 py-2 border-b">{{ $index + 1 }}</td>
+                            <td class="px-4 py-2 border-b">{{ $row->nama_pembayaran }}</td>
+                            <td class="px-4 py-2 border-b">
+                                Rp {{ number_format($row->jumlah_bayar, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-2 border-b">
+                                {{ \Carbon\Carbon::parse($row->tanggal_bayar)->format('d-m-Y H:i') }}
+                            </td>
+                            <td class="px-4 py-2 border-b">{{ ucfirst($row->metode) }}</td>
+                            <td class="px-4 py-2 border-b text-center">
+                                <a href="{{ route('siswa.riwayat.struk', $row->pembayaran_id) }}"
+                                   target="_blank"
+                                   class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                    Cetak Struk
+                                </a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    <div class="mt-6">
+        <a href="{{ route('siswa.dashboard') }}" class="text-blue-600 hover:underline">
+            &laquo; Kembali ke Dashboard
+        </a>
+    </div>
 </div>
 @endsection

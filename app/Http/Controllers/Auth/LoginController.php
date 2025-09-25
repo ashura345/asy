@@ -15,17 +15,26 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        // Validate login data
+        // Validasi input
         $credentials = $request->only('email', 'password');
 
-        // Attempt to log the user in
         if (Auth::attempt($credentials)) {
-            // Redirect the user to the intended page after successful login
-            return redirect()->intended('dashboard');  // Adjust your redirection target
+            $user = Auth::user();
+
+            // Redirect berdasarkan role
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            } elseif ($user->role === 'siswa') {
+                return redirect()->route('siswa.dashboard');
+            }
+
+            // Jika role tidak dikenali
+            Auth::logout();
+            return redirect()->route('login')->withErrors(['role' => 'Role tidak dikenali.']);
         }
 
-        // If authentication fails, return with an error message
-        return redirect()->back()->withErrors(['email' => 'These credentials do not match our records.']);
+        // Jika login gagal
+        return redirect()->back()->withErrors(['email' => 'Email atau password salah.']);
     }
 
     public function logout()

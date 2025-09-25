@@ -7,28 +7,30 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Jalankan migrasi.
      */
-    public function up()
+    public function up(): void
     {
         Schema::create('pembayarans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kategori_id')->constrained('kategori_pembayarans')->onDelete('cascade');
+            $table->foreignId('kategori_id')
+                ->constrained('kategori_pembayarans')
+                ->onDelete('cascade');
             $table->string('nama');
             $table->string('kelas')->nullable();
-            $table->decimal('total', 10, 2);
+            $table->decimal('jumlah', 10, 2); // kolom jumlah untuk menyimpan pembayaran
             $table->date('tanggal_buat');
             $table->date('tanggal_tempo')->nullable();
-            $table->string('foto')->nullable();  // Menyimpan foto pembayaran
+            $table->string('foto')->nullable(); // Foto bukti pembayaran (jika ada)
             $table->enum('status', ['lunas', 'belum lunas'])->default('belum lunas');
             $table->timestamps();
         });
     }
 
     /**
-     * Reverse the migrations.
+     * Batalkan migrasi.
      */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('pembayarans');
     }

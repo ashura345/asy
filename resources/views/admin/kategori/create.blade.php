@@ -6,21 +6,22 @@
     <form action="{{ route('admin.kategori.store') }}" method="POST">
         @csrf
         <div class="mb-4">
-            <label for="nama_kategori" class="block text-sm font-medium text-gray-700">Nama Kategori</label>
-            <input type="text" name="nama_kategori" id="nama_kategori" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+            <label for="nama" class="block text-sm font-medium text-gray-700">Nama Kategori</label>
+            <input type="text" name="nama" id="nama" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm" required>
         </div>
 
         <div class="mb-4">
             <label for="deskripsi" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-            <textarea name="deskripsi" id="deskripsi" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+            <textarea name="deskripsi" id="deskripsi" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"></textarea>
         </div>
 
         <div class="mb-4">
-            <label for="tipe_pembayaran" class="block text-sm font-medium text-gray-700">Tipe Pembayaran</label>
-            <select name="tipe_pembayaran" id="tipe_pembayaran" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                <option value="bulanan">Bulanan</option>
-                <option value="tahunan">Tahunan</option>
-                <option value="bebas">Bebas</option>
+            <label for="tipe" class="block text-sm font-medium text-gray-700">Tipe Pembayaran</label>
+            <select name="tipe" id="tipe" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm" required>
+                <option value="Harian">Harian</option>
+                <option value="Bulanan">Bulanan</option>
+                <option value="Tahunan">Tahunan</option>
+                <option value="Bebas">Bebas</option>
             </select>
         </div>
 

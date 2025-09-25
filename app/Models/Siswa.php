@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace App\Models; // atau namespace sesuai struktur projek kamu
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Siswa extends Model
 {
-    use HasFactory;
+    // Tentukan nama tabel kalau tabelnya bukan plural "siswas"
+    protected $table = 'siswa';
 
-    protected $fillable = ['nis', 'nama', 'kelas', 'tahun_ajaran', 'email', 'password'];
+    // Kalau kamu pakai guarded atau fillable, isi sesuai kebutuhan
+    protected $fillable = ['name', 'nis', 'kelas', 'tahun_ajaran', 'email', 'password', 'role'];
 }

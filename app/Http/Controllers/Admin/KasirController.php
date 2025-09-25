@@ -3,54 +3,122 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Siswa;
-use App\Models\KategoriPembayaran;
-use App\Models\Pembayaran;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class KasirController extends Controller
 {
+    /**
+     * 1) Menampilkan daftar pembayaran untuk Kasir.
+     */
     public function index()
     {
-        // Menampilkan semua pembayaran kasir
-        $pembayaran = Pembayaran::where('status', 'lunas')->get();
-        return view('admin.kasir.index', compact('pembayaran'));
+        $pembayarans = DB::table('pembayaran_user')
+            ->join('pembayarans', 'pembayaran_user.pembayaran_id', '=', 'pembayarans.id')
+            ->join('users', 'pembayaran_user.user_id', '=', 'users.id')
+            ->whereIn('pembayaran_user.status', ['belum-lunas', 'menunggu-verifikasi', 'lunas'])
+            ->select(
+                'pembayaran_user.*',
+                'pembayarans.jumlah',
+                'pembayarans.tanggal_tempo',
+                'pembayarans.nama as nama_pembayaran',
+                'users.name as nama_siswa',
+                'users.kelas',
+                'pembayaran_user.id as pivot_id'
+            )
+            ->orderBy('pembayarans.tanggal_tempo')
+            ->paginate(10);
+
+        return view('admin.kasir.index', compact('pembayarans'));
     }
 
-    public function create()
+    /**
+     * 2) Menampilkan form verifikasi pembayaran tunai
+     *    (hanya jika status = menunggu-verifikasi).
+     */
+    public function bayarForm($pivotId)
     {
-        // Menampilkan form pembayaran manual
-        $siswa = Siswa::all();  // Ambil data siswa
-        $kategoriPembayaran = KategoriPembayaran::all();  // Ambil data kategori pembayaran
-        return view('admin.kasir.create', compact('siswa', 'kategoriPembayaran'));
+        $pembayaran = DB::table('pembayaran_user')
+            ->join('pembayarans', 'pembayaran_user.pembayaran_id', '=', 'pembayarans.id')
+            ->join('users', 'pembayaran_user.user_id', '=', 'users.id')
+            ->where('pembayaran_user.id', $pivotId)
+            ->select(
+                'pembayaran_user.*',
+                'pembayarans.jumlah',
+                'pembayarans.tanggal_tempo',
+                'pembayarans.nama as nama_pembayaran',
+                'pembayarans.keterangan',
+                'users.name as nama_siswa',
+                'users.kelas',
+                'pembayaran_user.id as pivot_id'
+            )
+            ->first();
+
+        if (!$pembayaran || $pembayaran->status !== 'menunggu-verifikasi') {
+            return redirect()->route('admin.kasir.index')
+                             ->with('error', 'Pembayaran sudah diverifikasi atau tidak dapat diproses.');
+        }
+
+        return view('admin.kasir.bayarForm', compact('pembayaran'));
     }
 
-    public function store(Request $request)
+    /**
+     * 3) Memproses form verifikasi (update status → 'lunas', tanggal_pembayaran).
+     */
+    public function prosesBayar(Request $request, $pivotId)
     {
-        // Validasi dan simpan pembayaran manual
         $request->validate([
-            'siswa_id' => 'required',
-            'kategori_pembayaran_id' => 'required',
-            'nominal' => 'required|numeric',
-            'status' => 'required',
-            'tanggal_jatuh_tempo' => 'required|date',
+            'jumlah_bayar' => 'required|numeric|min:1',
         ]);
 
-        Pembayaran::create([
-            'siswa_id' => $request->siswa_id,
-            'kategori_pembayaran_id' => $request->kategori_pembayaran_id,
-            'nominal' => $request->nominal,
-            'status' => $request->status,
-            'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
-        ]);
+        $pembayaranData = DB::table('pembayaran_user')
+            ->join('pembayarans', 'pembayaran_user.pembayaran_id', '=', 'pembayarans.id')
+            ->where('pembayaran_user.id', $pivotId)
+            ->select('pembayaran_user.*', 'pembayarans.jumlah')
+            ->first();
 
-        return redirect()->route('admin.kasir.index');
+        if (!$pembayaranData) {
+            return redirect()->route('admin.kasir.index')
+                             ->with('error', 'Data pembayaran tidak ditemukan.');
+        }
+
+        if ($request->jumlah_bayar < $pembayaranData->jumlah) {
+            return back()->withErrors(['jumlah_bayar' => 'Jumlah bayar tidak boleh kurang dari total tagihan.']);
+        }
+
+        // Hanya update status dan tanggal_pembayaran — kolom lain tidak ada.
+        DB::table('pembayaran_user')
+            ->where('id', $pivotId)
+            ->update([
+                'status'             => 'lunas',
+                'tanggal_pembayaran' => now(),
+            ]);
+
+        return redirect()->route('admin.kasir.index')
+                         ->with('success', 'Pembayaran berhasil diverifikasi dan diproses.');
     }
 
-    public function destroy($id)
+    /**
+     * 4) (Opsional) Proses siswa klik “Bayar Tunai” dari sisi siswa/frontend.
+     *    Update status → 'menunggu-verifikasi' dan tanggal_pembayaran (opsional),
+     *    kemudian redirect ke form kasir.
+     */
+    public function prosesPaymentTunai($pivotId)
     {
-        // Menghapus pembayaran kasir
-        Pembayaran::destroy($id);
-        return redirect()->route('admin.kasir.index');
+        $pivot = DB::table('pembayaran_user')->where('id', $pivotId)->first();
+
+        if (!$pivot || $pivot->status != 'belum-lunas') {
+            return redirect()->back()->with('error', 'Tagihan tidak valid atau sudah dibayar.');
+        }
+
+        DB::table('pembayaran_user')
+            ->where('id', $pivotId)
+            ->update([
+                'status'             => 'menunggu-verifikasi',
+                'tanggal_pembayaran' => now(), // catat waktu siswa melakukan request bayar tunai
+            ]);
+
+        return redirect()->route('admin.kasir.bayarForm', $pivotId)
+                         ->with('success', 'Silakan lakukan pembayaran tunai di kasir.');
     }
 }

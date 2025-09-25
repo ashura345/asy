@@ -28,8 +28,9 @@ class DashboardController extends Controller
         // Pengingat jatuh tempo dalam 3 hari
         $tanggalJatuhTempo = Carbon::now()->addDays(3);
         $transaksiJatuhTempo = Pembayaran::where('status', 'belum lunas')
-                                          ->where('tanggal_jatuh_tempo', '<=', $tanggalJatuhTempo)
-                                          ->count();
+                              ->whereDate('tanggal_tempo', '<=', now())
+                              ->count();
+
 
         // Statistik pembayaran berdasarkan bulan (untuk line chart)
         $payments = Pembayaran::selectRaw('MONTH(created_at) as month, SUM(jumlah) as total_payment')

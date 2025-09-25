@@ -4,26 +4,43 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class AddUserIdToPembayaransTable extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * @return void
      */
-    public function up()
+    public function up(): void
     {
         Schema::table('pembayarans', function (Blueprint $table) {
-            // Use unsignedBigInteger for better compatibility with foreign keys
-            $table->unsignedBigInteger('user_id')->nullable();
+            // Pastikan kolom user_id belum ada
+            if (!Schema::hasColumn('pembayarans', 'user_id')) {
+                // Tambahkan kolom user_id (nullable) dan foreign key ke tabel users
+                $table->foreignId('user_id')
+                      ->nullable()
+                      ->constrained('users')
+                      ->onDelete('set null')
+                      ->after('id'); // atau letakkan setelah kolom yang diinginkan
+            }
         });
     }
 
     /**
      * Reverse the migrations.
+     *
+     * @return void
      */
-    public function down()
+    public function down(): void
     {
         Schema::table('pembayarans', function (Blueprint $table) {
-            $table->dropColumn('user_id');
+            // Hanya drop jika kolom user_id benar-benar ada
+            if (Schema::hasColumn('pembayarans', 'user_id')) {
+                // Drop foreign key constraint terlebih dahulu
+                $table->dropForeign(['user_id']);
+                // Lalu drop kolom user_id
+                $table->dropColumn('user_id');
+            }
         });
     }
-};
+}
