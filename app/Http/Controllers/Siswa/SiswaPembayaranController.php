@@ -88,7 +88,7 @@ class SiswaPembayaranController extends Controller
             $snapToken = Snap::getSnapToken($params);
         } catch (\Exception $e) {
             Log::error("Midtrans Snap Token Error (generateToken): " . $e->getMessage());
-            return response()->json([
+            return response()->json([ 
                 'error' => 'Gagal generate token: ' . $e->getMessage()
             ], 500);
         }
@@ -179,24 +179,32 @@ class SiswaPembayaranController extends Controller
         // Tangani masing‐masing status transaksi
         if ($transactionStatus === 'settlement') {
             // Pembayaran berhasil → set status = 'lunas'
-            $pembayaran->siswa()->updateExistingPivot($userId, [
-                'status'             => 'lunas',
-                'metode'             => 'transfer',
-                'tanggal_pembayaran' => now(),
-                'payment_type'       => $paymentType,
-                'transaction_status' => $transactionStatus,
+            $pembayaran->siswa()->syncWithoutDetaching([
+                $userId => [
+                    'status'             => 'lunas',
+                    'metode'             => 'transfer',
+                    'tanggal_pembayaran' => now(),
+                    'payment_type'       => $paymentType,
+                    'transaction_status' => $transactionStatus,
+                ]
             ]);
-            Log::info("[Midtrans] Pembayaran ID {$idPembayaran} untuk user {$userId} telah lunas");
 
-            // Redirect ke halaman index setelah pembayaran berhasil
-            return redirect()->route('siswa.pembayaran.index')->with('success', 'Pembayaran berhasil dan status telah diperbarui menjadi lunas.');
+            // Pembaruan status di tabel utama
+            $pembayaran->update([
+                'status' => 'Lunas',
+            ]);
+
+            Log::info("[Midtrans] Pembayaran ID {$idPembayaran} untuk user {$userId} telah lunas");
         } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire'])) {
             // Pembayaran gagal atau dibatalkan → set status = 'dibatalkan'
-            $pembayaran->siswa()->updateExistingPivot($userId, [
-                'status'             => 'dibatalkan',
-                'payment_type'       => $paymentType,
-                'transaction_status' => $transactionStatus,
+            $pembayaran->siswa()->syncWithoutDetaching([
+                $userId => [
+                    'status'             => 'dibatalkan',
+                    'payment_type'       => $paymentType,
+                    'transaction_status' => $transactionStatus,
+                ]
             ]);
+
             Log::info("[Midtrans] Pembayaran ID {$idPembayaran} untuk user {$userId} status: {$transactionStatus}");
         } else {
             Log::info("[Midtrans] Status transaksi lain untuk {$orderId}: {$transactionStatus}");

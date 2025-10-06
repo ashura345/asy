@@ -11,11 +11,15 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('pembayaran_user', function (Blueprint $table) {
-            // Tambahkan kolom tanggal_verifikasi (nullable)
-            $table->timestamp('tanggal_verifikasi')->nullable()->after('tanggal_pembayaran');
+            // Cek apakah kolom 'tanggal_verifikasi' sudah ada
+            if (!Schema::hasColumn('pembayaran_user', 'tanggal_verifikasi')) {
+                $table->timestamp('tanggal_verifikasi')->nullable()->after('tanggal_pembayaran');
+            }
 
-            // Tambahkan kolom jumlah_bayar (nullable, decimal)
-            $table->decimal('jumlah_bayar', 15, 2)->nullable()->after('tanggal_verifikasi');
+            // Cek apakah kolom 'jumlah_bayar' sudah ada
+            if (!Schema::hasColumn('pembayaran_user', 'jumlah_bayar')) {
+                $table->decimal('jumlah_bayar', 15, 2)->nullable()->after('tanggal_verifikasi');
+            }
         });
     }
 

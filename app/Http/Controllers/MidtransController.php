@@ -13,7 +13,8 @@ class MidtransController extends Controller
 {
     public function __construct()
     {
-        // $this->middleware('auth'); // jika diperlukan
+        // Optional: if authentication is required for payments
+        // $this->middleware('auth');
     }
 
     /**
@@ -58,12 +59,16 @@ class MidtransController extends Controller
                     'order_id_midtrans'  => $orderId, // kolom tambahan jika perlu
                 ]
             ]);
-        } catch (\Exception $e) {
-            Log::error("Midtrans Snap Token Error (pay): " . $e->getMessage());
-            return back()->with('error', 'Gagal memproses Midtrans: ' . $e->getMessage());
-        }
 
-        // Kirim snapToken ke view untuk dipanggil snap.pay() via JS
-        return view('siswa.pembayaran.redirect', compact('snapToken', 'orderId'));
+            // Return the Snap Token to the front-end for further processing
+            return response()->json([
+                'snap_token' => $snapToken,
+                'order_id'   => $orderId,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Midtrans payment error: ' . $e->getMessage());
+            return response()->json(['message' => 'Terjadi kesalahan pada pembayaran.'], 500);
+        }
     }
 }

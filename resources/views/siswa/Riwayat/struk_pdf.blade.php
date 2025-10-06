@@ -4,32 +4,24 @@
     <meta charset="utf-8">
     <title>Struk Pembayaran</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .detail { border: 1px solid #333; padding: 20px; }
-        .detail p { margin: 5px 0; }
-        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #555; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+        h2 { text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        td, th { padding: 8px; border: 1px solid #000; }
+        th { background-color: #f2f2f2; text-align: left; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>Struk Pembayaran</h2>
-        </div>
-
-        <div class="detail">
-            <p><strong>Nama Siswa:</strong> {{ $data->nama_siswa }}</p>
-            <p><strong>Kelas:</strong> {{ $data->kelas }}</p>
-            <p><strong>Nama Pembayaran:</strong> {{ $data->nama_pembayaran }}</p>
-            <p><strong>Jumlah Bayar:</strong> Rp {{ number_format($data->jumlah_bayar, 0, ',', '.') }}</p>
-            <p><strong>Tanggal Bayar:</strong> {{ \Carbon\Carbon::parse($data->tanggal_bayar)->format('d-m-Y H:i') }}</p>
-            <p><strong>Metode:</strong> {{ ucfirst($data->metode) }}</p>
-        </div>
-
-        <div class="footer">
-            <p>Terima kasih telah melakukan pembayaran.</p>
-        </div>
-    </div>
+    <h2>Struk Pembayaran</h2>
+    <table>
+        <tr><th>Nama Siswa</th><td>{{ $data->nama_siswa }}</td></tr>
+        <tr><th>Kelas</th><td>{{ $data->kelas }}</td></tr>
+        <tr><th>Nama Pembayaran</th><td>{{ $data->nama_pembayaran }}</td></tr>
+        <tr><th>Total Tagihan</th><td>{{ number_format($data->total_tagihan, 0, ',', '.') }}</td></tr>
+        <tr><th>Jumlah Bayar</th><td>{{ number_format($data->jumlah_bayar, 0, ',', '.') }}</td></tr>
+        <tr><th>Tanggal Bayar</th><td>{{ date('d/m/Y H:i', strtotime($data->tanggal_bayar)) }}</td></tr>
+        <tr><th>Metode</th><td>{{ ucfirst($data->metode) }}</td></tr>
+        <tr><th>Status</th><td>{{ ucfirst($data->status) }}</td></tr>
+    </table>
 </body>
 </html>

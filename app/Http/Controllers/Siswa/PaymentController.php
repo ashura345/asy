@@ -9,6 +9,7 @@ use Midtrans\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Pembayaran;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -84,6 +85,7 @@ class PaymentController extends Controller
         // Tangkap notifikasi dari Midtrans
         $notification = new Notification();
 
+        // Get transaction status and order ID
         $transactionStatus = $notification->transaction_status;
         $orderId = $notification->order_id;
 
@@ -94,18 +96,37 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Data pembayaran tidak ditemukan.'], 404);
         }
 
-        // Update status jika berhasil
-        if ($transactionStatus == 'settlement') {
-            $pembayaran->update([
-                'status_pembayaran' => 'Lunas',
-                'tanggal_pembayaran' => now(),
-            ]);
-        } elseif (in_array($transactionStatus, ['cancel', 'expire', 'deny'])) {
-            $pembayaran->update([
-                'status_pembayaran' => 'Gagal',
-            ]);
+        // Check payment status and update accordingly
+        switch ($transactionStatus) {
+            case 'settlement':
+                $pembayaran->update([
+                    'status_pembayaran' => 'Lunas',
+                    'tanggal_pembayaran' => now(),
+                ]);
+                Log::info("Payment successful for Order ID: $orderId");
+                break;
+
+            case 'pending':
+                $pembayaran->update([
+                    'status_pembayaran' => 'Pending',
+                ]);
+                Log::info("Payment is pending for Order ID: $orderId");
+                break;
+
+            case 'cancel':
+            case 'expire':
+            case 'deny':
+                $pembayaran->update([
+                    'status_pembayaran' => 'Gagal',
+                ]);
+                Log::info("Payment failed for Order ID: $orderId");
+                break;
+
+            default:
+                Log::warning("Unknown transaction status: $transactionStatus for Order ID: $orderId");
         }
 
+        // Return a success response
         return response()->json(['message' => 'Notifikasi diproses'], 200);
     }
 }

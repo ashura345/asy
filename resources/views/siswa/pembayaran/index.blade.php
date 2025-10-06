@@ -29,36 +29,51 @@
             <tbody>
                 @forelse ($tagihans as $index => $pembayaran)
                     @php
-                        // Ambil pivot data untuk user sekarang (jika ada)
+                        // Ambil pivot data untuk user saat ini
                         $pivot = $pembayaran->siswa()
                                             ->where('user_id', Auth::id())
-                                            ->first()
-                                            ?->pivot;
+                                            ->first()?->pivot;
 
-                        // Jika belum pernah bayar, set default status & metode
-                        $statusPivot = $pivot?->status ?? 'menunggu-pembayaran';
-                        $metodePivot = $pivot?->metode ?? null;
+                        // Normalisasi status
+                        $statusRaw = strtolower(trim($pivot?->status ?? 'menunggu-pembayaran'));
+                        $statusRaw = str_replace(['_', ' '], '-', $statusRaw);
+
+                        // Semua status "belum-lunas" dianggap "menunggu-pembayaran"
+                        $waitingStatuses = ['belum-lunas', 'menunggu-pembayaran', 'pending', 'unpaid'];
+                        if (in_array($statusRaw, $waitingStatuses)) {
+                            $statusPivot = 'menunggu-pembayaran';
+                        } elseif ($statusRaw === 'menunggu-verifikasi') {
+                            $statusPivot = 'menunggu-verifikasi';
+                        } elseif ($statusRaw === 'lunas') {
+                            $statusPivot = 'lunas';
+                        } elseif (in_array($statusRaw, ['dibatalkan', 'batal', 'cancelled'])) {
+                            $statusPivot = 'dibatalkan';
+                        } else {
+                            $statusPivot = $statusRaw;
+                        }
+
+                        $metodePivot = $pivot?->metode ?? '-';
+
+                        // Warna status
+                        $statusClass = match ($statusPivot) {
+                            'lunas' => 'bg-green-200 text-green-800',
+                            'menunggu-verifikasi' => 'bg-yellow-200 text-yellow-800',
+                            'menunggu-pembayaran' => 'bg-blue-200 text-blue-800',
+                            'dibatalkan' => 'bg-red-200 text-red-800',
+                            default => 'bg-gray-200 text-gray-800',
+                        };
                     @endphp
-                    <tr class="hover:bg-gray-50">
-                        {{-- Penomoran cukup pakai $index + 1 --}}
-                        <td class="py-2 px-4 border-b">{{ $index + 1 }}</td>
 
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-2 px-4 border-b">{{ $index + 1 }}</td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->nama }}</td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->kelas }}</td>
-                        <td class="py-2 px-4 border-b">
-                            Rp {{ number_format($pembayaran->jumlah, 0, ',', '.') }}
-                        </td>
+                        <td class="py-2 px-4 border-b">Rp {{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
                         <td class="py-2 px-4 border-b">
                             {{ \Carbon\Carbon::parse($pembayaran->tanggal_tempo)->format('d-m-Y') }}
                         </td>
                         <td class="py-2 px-4 border-b">
-                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold
-                                {{ $statusPivot == 'lunas' ? 'bg-green-200 text-green-800' : '' }}
-                                {{ $statusPivot == 'menunggu-verifikasi' ? 'bg-yellow-200 text-yellow-800' : '' }}
-                                {{ $statusPivot == 'menunggu-pembayaran' ? 'bg-blue-200 text-blue-800' : '' }}
-                                {{ $statusPivot == 'dibatalkan' ? 'bg-red-200 text-red-800' : '' }}
-                                {{ !in_array($statusPivot, ['lunas','menunggu-verifikasi','menunggu-pembayaran','dibatalkan']) ? 'bg-gray-200 text-gray-800' : '' }}
-                            ">
+                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold {{ $statusClass }}">
                                 {{ ucfirst(str_replace('-', ' ', $statusPivot)) }}
                             </span>
                         </td>
@@ -66,12 +81,12 @@
                             {{ $metodePivot ? ucfirst(str_replace('-', ' ', $metodePivot)) : '-' }}
                         </td>
                         <td class="py-2 px-4 border-b space-x-2">
-                            @if ($statusPivot == 'menunggu-pembayaran' || $statusPivot == 'dibatalkan')
+                            @if (in_array($statusPivot, ['menunggu-pembayaran', 'dibatalkan']))
                                 <a href="{{ route('siswa.pembayaran.show', $pembayaran->id) }}"
                                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-                                   Lihat / Bayar
+                                    Lihat / Bayar
                                 </a>
-                            @elseif ($statusPivot == 'menunggu-verifikasi')
+                            @elseif ($statusPivot === 'menunggu-verifikasi')
                                 <span class="text-yellow-600 font-semibold text-sm">
                                     Menunggu Verifikasi
                                 </span>
@@ -92,12 +107,5 @@
             </tbody>
         </table>
     </div>
-
-    {{-- Jika Anda tidak menggunakan paginate(), baris pagination ini bisa dihapus/ dikomentar --}}
-    {{--
-    <div class="mt-4">
-        {{ $tagihans->withQueryString()->links() }}
-    </div>
-    --}}
 </div>
 @endsection

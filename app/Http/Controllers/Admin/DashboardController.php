@@ -5,53 +5,69 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Siswa;
 use App\Models\Pembayaran;
-use App\Models\KategoriPembayaran;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // Statistik pembayaran lunas dan belum lunas
-        $totalLunas = Pembayaran::where('status', 'lunas')->count();
-        $totalBelumLunas = Pembayaran::where('status', 'belum lunas')->count();
+        // Get the start and end of the current month
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth   = now()->endOfMonth();
 
-        // Statistik kategori pembayaran
-        $kategoriPembayaran = KategoriPembayaran::all();
+        // Get the total nominal of payments that are 'lunas' (paid) in the current month
+        $nominalLunas = (float) Pembayaran::where('status', 'lunas')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->sum('jumlah');
 
-        // Statistik siswa
-        $totalSiswa = Siswa::count();
+        // Get the total outstanding (unpaid) amount
+        $nominalOutstanding = (float) Pembayaran::where('status', 'belum lunas')
+            ->sum('jumlah');
 
-        // Statistik transaksi
-        $totalTransaksi = Pembayaran::count();
+        // Get the total number of transactions in the current month (MTD)
+        $totalTransaksi = Pembayaran::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->count();
 
-        // Pengingat jatuh tempo dalam 3 hari
-        $tanggalJatuhTempo = Carbon::now()->addDays(3);
+        // Get the number of students per class for the filter dropdown
+        $kelasCounts = Siswa::selectRaw('kelas, COUNT(*) as total')
+            ->groupBy('kelas')
+            ->orderBy('kelas')
+            ->pluck('total', 'kelas');
+
+        $totalSiswa   = $kelasCounts->sum();
+        $kelasOptions = $kelasCounts->keys()->values();
+
+        // Get the number of overdue payments (due payments)
         $transaksiJatuhTempo = Pembayaran::where('status', 'belum lunas')
-                              ->whereDate('tanggal_tempo', '<=', now())
-                              ->count();
+            ->whereDate('tanggal_tempo', '<=', now())
+            ->count();
 
+        // Get monthly total payments for the last 12 months
+        $year = now()->year;
 
-        // Statistik pembayaran berdasarkan bulan (untuk line chart)
-        $payments = Pembayaran::selectRaw('MONTH(created_at) as month, SUM(jumlah) as total_payment')
-                              ->groupBy('month')
-                              ->whereYear('created_at', Carbon::now()->year)
-                              ->get();
+        $grp = Pembayaran::selectRaw('MONTH(created_at) as m, SUM(jumlah) as total')
+            ->whereYear('created_at', $year)
+            ->groupBy('m')
+            ->pluck('total', 'm'); // [1=>..., 2=>..., ...]
 
-        // Siapkan data untuk chart
-        $months = $payments->pluck('month');
-        $totals = $payments->pluck('total_payment');
+        $months = [];
+        $totals = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $months[] = Carbon::create(null, $m, 1)->translatedFormat('F'); // January, February, ...
+            $totals[] = (float) ($grp[$m] ?? 0);
+        }
 
-        // Mengirim semua data ke view
         return view('admin.dashboard', compact(
-            'totalLunas', 
-            'totalBelumLunas', 
-            'kategoriPembayaran', 
-            'totalSiswa', 
-            'totalTransaksi', 
-            'transaksiJatuhTempo', 
-            'months', 
-            'totals'
+            'nominalLunas',
+            'nominalOutstanding',
+            'totalTransaksi',
+            'totalSiswa',
+            'kelasCounts',
+            'kelasOptions',
+            'months',
+            'totals',
+            'year',
+            'transaksiJatuhTempo'
         ));
     }
 }

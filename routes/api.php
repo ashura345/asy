@@ -1,18 +1,20 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PembayaranController;
+use App\Http\Controllers\Webhook\MidtransWebhookController;
 
-Route::get('/chart-data', function () {
-    return response()->json([
-        'labels' => ['Januari', 'Februari', 'Maret', 'April'],
-        'values' => [1500000, 1200000, 1800000, 2000000],
-    ]);
-});
+// Webhook (tanpa auth)
+Route::post('/webhooks/midtrans', [MidtransWebhookController::class, 'handle'])->name('webhooks.midtrans');
 
-Route::get('/line-chart-data', function () {
-    return response()->json([
-        'months' => [1, 2, 3, 4],
-        'totals' => [1500000, 1200000, 1800000, 2000000],
-    ]);
+// === AUTH ===
+Route::post('/login',  [AuthController::class, 'login'])->name('api.login');
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.logout');
+
+// === DATA UNTUK APP ===
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user',        [AuthController::class, 'me'])->name('api.me');
+    Route::get('/pembayarans', [PembayaranController::class, 'index'])->name('api.pembayarans');
+    Route::get('/riwayat',     [PembayaranController::class, 'riwayat'])->name('api.riwayat');
 });

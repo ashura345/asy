@@ -6,14 +6,52 @@
 <div class="container mx-auto px-4">
     <h1 class="text-2xl font-bold mb-4">Daftar Siswa</h1>
 
-    <div class="flex justify-between items-center mb-4">
-        <a href="{{ route('admin.siswa.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">+ Tambah Siswa</a>
-        <form action="{{ route('admin.siswa.index') }}" method="GET" class="flex items-center space-x-2">
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / NIS / kelas"
-                class="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring focus:ring-blue-300" />
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <a href="{{ route('admin.siswa.create') }}"
+           class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+           + Tambah Siswa
+        </a>
+
+        <form action="{{ route('admin.siswa.index') }}" method="GET"
+              class="flex flex-wrap items-center gap-2">
+            {{-- Search umum: nama / NIS / email. Jika isi angka murni (1/2/12), dianggap kelas exact juga --}}
+            <input type="text" name="search" value="{{ request('search') }}"
+                   placeholder="Cari nama / NIS / email / angka=kelas"
+                   class="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring focus:ring-blue-300" />
+
+            {{-- Filter Kelas (exact) --}}
+            <select name="kelas" class="border border-gray-300 rounded px-3 py-1">
+                <option value="">Semua Kelas</option>
+                @isset($kelasList)
+                @foreach($kelasList as $k)
+                    <option value="{{ $k }}" {{ request('kelas') == $k ? 'selected' : '' }}>
+                        {{ $k }}
+                    </option>
+                @endforeach
+                @endisset
+            </select>
+
+            {{-- Filter Tahun Ajaran (exact) --}}
+            <select name="tahun_ajaran" class="border border-gray-300 rounded px-3 py-1">
+                <option value="">Semua Tahun</option>
+                @isset($tahunList)
+                @foreach($tahunList as $t)
+                    <option value="{{ $t }}" {{ request('tahun_ajaran') == $t ? 'selected' : '' }}>
+                        {{ $t }}
+                    </option>
+                @endforeach
+                @endisset
+            </select>
+
             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded">
                 Cari
             </button>
+
+            @if(request()->hasAny(['search','kelas','tahun_ajaran']))
+                <a href="{{ route('admin.siswa.index') }}" class="px-3 py-1 border rounded text-gray-700">
+                    Reset
+                </a>
+            @endif
         </form>
     </div>
 
@@ -44,8 +82,11 @@
                     <td class="py-2 px-4 border-b">{{ $siswa->email }}</td>
                     <td class="py-2 px-4 border-b">{{ $siswa->tahun_ajaran }}</td>
                     <td class="py-2 px-4 border-b space-x-2">
-                        <a href="{{ route('admin.siswa.edit', $siswa->id) }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
-                        <form action="{{ route('admin.siswa.destroy', $siswa->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin hapus siswa ini?')">
+                        <a href="{{ route('admin.siswa.edit', $siswa->id) }}"
+                           class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Edit</a>
+                        <form action="{{ route('admin.siswa.destroy', $siswa->id) }}"
+                              method="POST" class="inline-block"
+                              onsubmit="return confirm('Yakin hapus siswa ini?')">
                             @csrf
                             @method('DELETE')
                             <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Hapus</button>
@@ -59,6 +100,10 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    <div class="mt-4">
+        {{ $siswas->links() }}
     </div>
 </div>
 @endsection
