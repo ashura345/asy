@@ -4,47 +4,66 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
-    {
-        $cred = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+        public function login(Request $request){
+        $request->validate([
+            'nis' => 'required',
+            'password' => 'required',
         ]);
 
-        $user = User::where('email', $cred['email'])->first();
+        $user = User::where('nis', $request->nis)
+            ->where('role', 'siswa') // hanya untuk siswa
+            ->first();
 
-        if (!$user || !Hash::check($cred['password'], $user->password)) {
-            return response()->json(['message' => 'Email atau password salah'], 401);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'NIS atau password salah',
+            ], 401);
         }
 
-        // token personal (untuk mobile/web)
-        $token = $user->createToken('mobile')->plainTextToken;
+        // Hapus token lama (optional, biar 1 login 1 device)
+        $user->tokens()->delete();
+
+        // Buat token baru untuk siswa
+        $token = $user->createToken('mobile_siswa_token')->plainTextToken;
 
         return response()->json([
+            'status' => 'success',
+            'message' => 'Login berhasil',
             'token' => $token,
-            'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'nis' => $user->nis,
                 'kelas' => $user->kelas,
-                'role'  => $user->role,
-            ]
+                'tahun_ajaran' => $user->tahun_ajaran,
+            ],
+        ]);
+    }
+
+
+    
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Logout berhasil',
         ]);
     }
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
-    }
-
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out']);
+        return response()->json([
+            'status' => 'success',
+            'user' => $request->user(),
+        ]);
     }
 }

@@ -40,7 +40,8 @@ Route::get('/', function () {
 Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
-
+Route::get('/admin/dashboard', [DashboardController::class, 'index'])
+    ->name('admin.dashboard');
 // Login & Register Siswa
 Route::get('/siswa/login', [SiswaAuthController::class, 'showLoginForm'])->name('siswa.login');
 Route::post('/siswa/login', [SiswaAuthController::class, 'login'])->name('siswa.login.submit');
@@ -66,7 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-         Route::get('/dashboard/live', [DashboardController::class, 'liveChartData'])->name('dashboard.live');
+        Route::get('/dashboard/live', [DashboardController::class, 'liveChartData'])->name('dashboard.live');
 
         // Manajemen Siswa
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');
@@ -97,7 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Kasir (Admin)
         Route::prefix('kasir')->name('kasir.')->group(function () {
             Route::get('/', [KasirController::class, 'index'])->name('index');
-             Route::get('/{pivotId}/bayar', [KasirController::class, 'bayarForm'])->name('bayarForm');
+            Route::get('/{pivotId}/bayar', [KasirController::class, 'bayarForm'])->name('bayarForm');
             Route::post('/{pivotId}/proses', [KasirController::class, 'prosesBayar'])->name('proses');
             Route::post('/payment-tunai/{pivotId}', [KasirController::class, 'prosesPaymentTunai'])->name('paymentTunai');        
         });
@@ -110,7 +111,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-     
+
     });
 
     // ================== SISWA ROUTES ==================
@@ -124,32 +125,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Daftar Tagihan Pembayaran (Siswa)
         Route::get('/pembayaran', [SiswaPembayaranController::class, 'index'])
-             ->name('pembayaran.index');
+            ->name('pembayaran.index');
 
         // Detail Tagihan Pembayaran
         Route::get('/pembayaran/{id}', [SiswaPembayaranController::class, 'show'])
-             ->name('pembayaran.show');
+            ->name('pembayaran.show');
 
         // **Konfirmasi Pembayaran Tunai** (menyamai route name di Blade)
         Route::post('/pembayaran/{id}/konfirmasi-tunai', [SiswaPembayaranController::class, 'konfirmasiTunai'])
-             ->name('pembayaran.konfirmasiTunai');
+            ->name('pembayaran.konfirmasiTunai');
 
         // (Pilihan Anda: jika masih butuh route bayar-transfer / prosesMidtrans,
         //  bisa dibiarkan atau diganti sesuai kebutuhan. Contoh:)
         Route::post('/pembayaran/{id}/bayar-transfer', [SiswaPembayaranController::class, 'bayarTransfer'])
-             ->name('pembayaran.bayarTransfer');
+            ->name('pembayaran.bayarTransfer');
 
         Route::post('/pembayaran/{id}/proses', [SiswaPembayaranController::class, 'prosesPembayaran'])
-             ->name('pembayaran.proses');
+            ->name('pembayaran.proses');
+            Route::get('/pembayaran/{id}/generate-token', [SiswaPembayaranController::class, 'generateToken'])
+        ->name('pembayaran.generateToken');
 
-             Route::get('/pembayaran/{id}/generate-token', [SiswaPembayaranController::class, 'generateToken'])
-         ->name('pembayaran.generateToken');
-
-         Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])->name('midtrans.callback');
+        Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])->name('midtrans.callback');
 
          // Webhook Midtrans (set di Dashboard Midtrans → Payment Notification URL)
         Route::post('/midtrans/notify', [SiswaPembayaranController::class, 'notificationHandler'])
-         ->name('midtrans.notify');
+        ->name('midtrans.notify');
 
 
         // Jika sebelumnya ada route salah defined seperti:

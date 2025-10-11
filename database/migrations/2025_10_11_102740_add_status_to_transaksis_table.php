@@ -11,15 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-    Schema::create('transaksis', function (Blueprint $table) {
-    $table->id();
-    $table->dateTime('waktu');
-    $table->decimal('total_bayar', 15, 2);
-    $table->decimal('uang_dibayar', 15, 2);
-    $table->decimal('kembalian', 15, 2);
-    $table->timestamps();
-});
-
+        Schema::table('transaksis', function (Blueprint $table) {
+        $table->enum('status', ['lunas', 'belum_lunas'])->default('belum_lunas');
+    });
     }
 
     /**
@@ -27,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('transaksis');
+        Schema::table('transaksis', function (Blueprint $table) {
+            //
+        });
     }
 };

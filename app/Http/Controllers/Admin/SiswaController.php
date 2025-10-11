@@ -19,8 +19,8 @@ class SiswaController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
             });
 
             // Jika search angka murni (1-2 digit), treat sebagai filter kelas exact juga
