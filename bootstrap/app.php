@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'is_admin' => IsAdmin::class,
             'is_siswa' => IsSiswa::class, // Menambahkan koma di sini
         ]);
+
+        $middleware->validateCsrfTokens(
+            except: [
+                'midtrans/notification', // Tambahkan route webhook Midtrans di sini
+            ]
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

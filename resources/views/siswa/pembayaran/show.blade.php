@@ -31,47 +31,53 @@
                         <th>Status Pembayaran</th>
                         <td>
                             @php
-                                use Illuminate\Support\Facades\Auth;
-                                $pivot = $pembayaran->siswa()
-                                                    ->where('user_id', Auth::id())
-                                                    ->first()?->pivot;
-                                $status = $pivot?->status ?? 'belum-lunas';
+                                // safety net: normalisasi lagi di blade
+                                $statusBlade = strtolower(trim($statusRaw ?? 'belum-lunas'));
+                                $statusBlade = str_replace(['_', ' '], '-', $statusBlade);
                             @endphp
 
-                            @if ($status === 'belum-lunas')
+                            @if ($statusBlade === 'belum-lunas')
                                 <span class="badge bg-warning text-dark">Belum Lunas</span>
-                            @elseif ($status === 'menunggu-verifikasi')
+                            @elseif ($statusBlade === 'menunggu-verifikasi')
                                 <span class="badge bg-info text-dark">Menunggu Verifikasi</span>
-                            @elseif ($status === 'lunas')
+                            @elseif ($statusBlade === 'lunas')
                                 <span class="badge bg-success">Lunas</span>
-                            @elseif ($status === 'dibatalkan')
+                            @elseif ($statusBlade === 'dibatalkan')
                                 <span class="badge bg-danger">Dibatalkan</span>
                             @else
-                                <span class="badge bg-secondary">{{ ucfirst(str_replace('-', ' ', $status)) }}</span>
+                                <span class="badge bg-secondary">{{ ucfirst(str_replace('-', ' ', $statusBlade)) }}</span>
                             @endif
                         </td>
                     </tr>
                     <tr>
                         <th>Metode Pembayaran</th>
-                        <td>{{ $pivot?->metode ? ucfirst(str_replace('-', ' ', $pivot->metode)) : '-' }}</td>
+                        <td>
+                            @if ($statusBlade === 'belum-lunas')
+                                -
+                            @elseif ($statusBlade === 'menunggu-verifikasi')
+                                Tunai
+                            @else
+                                {{ $metodePivot ? ucfirst(str_replace('-', ' ', $metodePivot)) : '-' }}
+                            @endif
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
-            @if ($status === 'menunggu-verifikasi')
+            @if ($statusBlade === 'menunggu-verifikasi')
                 <p class="mt-3 text-warning">Silakan tunggu verifikasi pembayaran tunai dari kasir.</p>
-            @elseif ($status === 'lunas')
+            @elseif ($statusBlade === 'lunas')
                 <div class="alert alert-success">
                     🎉 Pembayaran Anda telah <strong>lunas</strong>. Terima kasih telah melakukan pembayaran.
                 </div>
-                <p class="mt-3 text-success">Terima kasih, pembayaran Anda sudah lunas.</p>
-            @elseif ($status === 'dibatalkan')
+            @elseif ($statusBlade === 'dibatalkan')
                 <p class="mt-3 text-danger">Pembayaran Anda dibatalkan. Silakan coba bayar ulang.</p>
             @endif
         </div>
     </div>
 
-    @if ($status === 'belum-lunas')
+    {{-- Tampilkan pilihan metode jika masih belum-lunas atau dibatalkan --}}
+    @if (in_array($statusBlade, ['belum-lunas','dibatalkan']))
         <div class="card mb-3">
             <div class="card-body">
                 <h5>Pilih Metode Pembayaran</h5>
@@ -113,7 +119,7 @@
     <a href="{{ route('siswa.pembayaran.index') }}" class="btn btn-secondary">Kembali ke Daftar Pembayaran</a>
 </div>
 
-{{-- Load Snap.js SEKALI saja (jika nanti token tersedia) --}}
+{{-- Snap.js --}}
 <script src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key="{{ config('midtrans.midtrans.client_key') }}"></script>
 
@@ -160,14 +166,11 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(data => {
             if (data.snapToken) {
-                // Panggil snap.pay() dengan token yang baru
                 snap.pay(data.snapToken, {
                     onSuccess: function(result) {
-                        // Jika pembayaran sukses, langsung redirect ke halaman index pembayaran
                         window.location.href = "{{ route('siswa.pembayaran.index') }}";
                     },
                     onPending: function(result) {
-                        // Jika masih pending, redirect juga ke index untuk melihat status
                         window.location.href = "{{ route('siswa.pembayaran.index') }}";
                     },
                     onError: function(result) {

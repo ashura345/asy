@@ -28,4 +28,11 @@ class User extends Authenticatable
                     ->withPivot(['status', 'tanggal_pembayaran', 'metode', 'order_id', 'bukti_transfer'])  // Kolom pivot
                     ->withTimestamps();
     }
+
+
+    public function riwayatPembayaran()
+{
+    return $this->hasMany(\App\Models\RiwayatPembayaran::class);
+}
+
 }

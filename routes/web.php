@@ -66,7 +66,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-         Route::get('/dashboard/live', [DashboardController::class, 'liveChartData'])->name('dashboard.live');
 
         // Manajemen Siswa
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');
@@ -145,21 +144,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
              Route::get('/pembayaran/{id}/generate-token', [SiswaPembayaranController::class, 'generateToken'])
          ->name('pembayaran.generateToken');
 
-         Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])->name('midtrans.callback');
-
-         // Webhook Midtrans (set di Dashboard Midtrans → Payment Notification URL)
-        Route::post('/midtrans/notify', [SiswaPembayaranController::class, 'notificationHandler'])
-         ->name('midtrans.notify');
-
-
+       
+         
         // Jika sebelumnya ada route salah defined seperti:
         // Route::post('/siswa/pembayaran/tunai/{id}', ...)
         // silakan dihapus atau diganti karena sudah kita definisikan di atas.
 
-        // Midtrans Callback (jika menggunakan PaymentController untuk webhook)
-        Route::post('/bayar-midtrans', [MidtransController::class, 'pay'])->name('midtrans.pay');
-        Route::post('/midtrans/callback', [PaymentController::class, 'handleNotification'])->name('midtrans.callback');
-        Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])->name('midtrans.callback');
+       
+     
         // Profil (Siswa)
         Route::resource('/profile', SiswaProfileController::class)->names('profile');
 
@@ -179,3 +171,8 @@ Route::get('/api/chart-data', [ChartController::class, 'monthly']);
 Route::get('/grafik-pembayaran', function () {
     return view('chart');
 });
+
+
+ // === ROUTE KANONIK WEBHOOK MIDTRANS (TANPA PREFIX) ===
+Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])
+    ->name('midtrans.notification');

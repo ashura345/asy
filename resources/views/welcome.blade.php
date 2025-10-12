@@ -43,7 +43,7 @@
                 </form>
             @else
                 <a href="{{ route('login') }}" class="px-4 py-2 hover:bg-green-700 rounded">Login</a>
-                <a href="{{ route('register') }}" class="ml-2 px-4 py-2 hover:bg-green-700 rounded">Register</a>
+                
             @endauth
         </div>
     </nav>
@@ -55,7 +55,7 @@
             @auth
                 <p class="mt-4">Anda sudah login sebagai <strong>{{ auth()->user()->name }}</strong>.</p>
             @else
-                <p class="mt-4">Silakan login atau daftar untuk melanjutkan.</p>
+                <p class="mt-4">Silakan login untuk melanjutkan.</p>
             @endauth
         </div>
     </div>

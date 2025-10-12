@@ -15,65 +15,59 @@ use Carbon\Carbon;
 class MidtransWebhookController extends Controller
 {
     public function handle(Request $request)
-    {
-        $payload = $request->all();
+{
+    $payload = $request->all();
 
-        $orderId     = $payload['order_id']      ?? null;
-        $statusCode  = $payload['status_code']   ?? null;
-        $grossAmount = $payload['gross_amount']  ?? null;
-        $signature   = $payload['signature_key'] ?? null;
-        $paymentType = $payload['payment_type']  ?? null;
-        $transactionStatus = $payload['transaction_status'] ?? null;
-        $fraudStatus = $payload['fraud_status'] ?? null;
+    $orderId     = $payload['order_id']      ?? null;
+    $statusCode  = $payload['status_code']   ?? null;
+    $grossAmount = $payload['gross_amount']  ?? null; // string
+    $signature   = $payload['signature_key'] ?? null;
+    $paymentType = $payload['payment_type']  ?? null;
+    $transactionStatus = $payload['transaction_status'] ?? null;
+    $fraudStatus = $payload['fraud_status'] ?? null;
 
-        // Validasi signature
-        $serverKey = config('services.midtrans.server_key');
-        $localSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
-        if (!$signature || $signature !== $localSignature) {
-            Log::warning('Midtrans signature mismatch', ['payload' => $payload]);
-            return response()->json(['message' => 'Invalid signature'], 400);
-        }
+    // PAKAI KUNCI YANG SAMA dengan controller lain
+    $serverKey = config('midtrans.midtrans.server_key'); // <— tadinya 'services.midtrans.server_key'
+    $localSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
 
-        $riwayat = RiwayatPembayaran::where('order_id', $orderId)->first();
-        if (!$riwayat) {
-            Log::warning('Midtrans order not found', ['order_id' => $orderId]);
-            return response()->json(['message' => 'Order not found'], 404);
-        }
-
-        // Periksa jumlah gross
-        if ((float) $riwayat->gross_amount > 0 && (float) $riwayat->gross_amount != (float) $grossAmount) {
-            Log::warning('Gross amount mismatch', [
-                'order_id' => $orderId,
-                'expected' => $riwayat->gross_amount,
-                'got'      => $grossAmount,
-            ]);
-        }
-
-        DB::transaction(function () use ($riwayat, $paymentType, $transactionStatus, $fraudStatus, $payload) {
-            $updates = [
-                'payment_type'       => $paymentType,
-                'transaction_status' => $transactionStatus,
-                'fraud_status'       => $fraudStatus,
-                'settlement_time'    => null,
-            ];
-
-            if (in_array($transactionStatus, ['settlement', 'capture'], true) && ($fraudStatus ?? 'accept') !== 'challenge') {
-                if ($riwayat->status !== 'lunas') {
-                    $updates['status']        = 'lunas';
-                    $updates['tanggal_bayar'] = Carbon::now();
-                    $updates['settlement_time'] = isset($payload['settlement_time'])
-                        ? Carbon::parse($payload['settlement_time'])
-                        : Carbon::now();
-                }
-            } elseif (in_array($transactionStatus, ['cancel', 'expire', 'deny'], true)) {
-                $updates['status'] = 'gagal';
-            } else {
-                $updates['status'] = 'pending';
-            }
-
-            $riwayat->update($updates);
-        });
-
-        return response()->json(['message' => 'Webhook processed']);
+    if (!$signature || !hash_equals($signature, $localSignature)) {
+        Log::warning('Midtrans signature mismatch', ['order_id' => $orderId]);
+        return response()->json(['message' => 'Invalid signature'], 200); // balas 200
     }
+
+    $riwayat = RiwayatPembayaran::where('order_id', $orderId)->first();
+    if (!$riwayat) {
+        Log::warning('Midtrans order not found (riwayat)', ['order_id' => $orderId]);
+        return response()->json(['message' => 'Order not found'], 200);
+    }
+
+    DB::transaction(function () use ($riwayat, $paymentType, $transactionStatus, $fraudStatus, $payload) {
+        $updates = [
+            'payment_type'       => $paymentType,
+            'transaction_status' => $transactionStatus,
+            'fraud_status'       => $fraudStatus,
+            'settlement_time'    => null,
+            'gross_amount'       => $payload['gross_amount'] ?? $riwayat->gross_amount, // pastikan ada kolomnya
+        ];
+
+        if (in_array($transactionStatus, ['settlement','capture'], true) && ($fraudStatus ?? 'accept') !== 'challenge') {
+            if ($riwayat->status !== 'lunas') {
+                $updates['status']          = 'lunas';
+                $updates['tanggal_bayar']   = isset($payload['settlement_time'])
+                                              ? Carbon::parse($payload['settlement_time'])
+                                              : Carbon::now();
+                $updates['settlement_time'] = $updates['tanggal_bayar'];
+            }
+        } elseif (in_array($transactionStatus, ['cancel','expire','deny'], true)) {
+            $updates['status'] = 'gagal';
+        } else {
+            $updates['status'] = 'pending';
+        }
+
+        $riwayat->update($updates);
+    });
+
+    return response()->json(['message' => 'Webhook processed'], 200);
+}
+
 }

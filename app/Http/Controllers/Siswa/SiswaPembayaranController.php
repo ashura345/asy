@@ -15,7 +15,7 @@ class SiswaPembayaranController extends Controller
 {
     public function __construct()
     {
-        // Pengaturan middleware bisa dikontrol di routes/web.php sesuai dengan kebutuhan
+        // atur middleware di routes/web.php jika perlu
     }
 
     /**
@@ -29,25 +29,29 @@ class SiswaPembayaranController extends Controller
     }
 
     /**
-     * Menampilkan detail tagihan siswa, tanpa generate token di sini
+     * Menampilkan detail tagihan siswa (tanpa generate token di sini)
      */
     public function show($id)
     {
         $user = Auth::user();
         $pembayaran = Pembayaran::with(['kategori', 'siswa'])->findOrFail($id);
 
-        // Ambil status pivot (jika pernah di‐sync)
-        $pivotData = $pembayaran->siswa()->where('user_id', $user->id)->first()?->pivot;
-        $status = $pivotData?->status ?? 'belum-lunas';
+        $pivot = $pembayaran->siswa()->where('user_id', $user->id)->first()?->pivot;
 
-        $snapToken = null; // token di‐generate via AJAX
+        // Normalisasi status pivot (handle 'belum lunas', 'belum_lunas', dll)
+        $statusRaw = $this->normalizeStatus($pivot?->status ?? 'belum-lunas');
 
-        return view('siswa.pembayaran.show', compact('pembayaran', 'status', 'snapToken'));
+        // Metode (kalau ada)
+        $metodePivot = $pivot?->metode ?? null;
+
+        $snapToken = null; // token di-generate lewat AJAX
+
+        // kirim statusRaw & metodePivot ke view (supaya blade tidak perlu query ulang)
+        return view('siswa.pembayaran.show', compact('pembayaran', 'statusRaw', 'metodePivot', 'snapToken'));
     }
 
     /**
-     * GENERATE TOKEN MIDTRANS DINAMIS
-     * Dipanggil lewat AJAX saat siswa menekan tombol “Transfer” di view.
+     * Generate token Midtrans dinamis (dipanggil via AJAX)
      * Mengembalikan JSON: { "snapToken": "..." }
      */
     public function generateToken($id)
@@ -55,17 +59,17 @@ class SiswaPembayaranController extends Controller
         $user = Auth::user();
         $pembayaran = Pembayaran::with(['siswa'])->findOrFail($id);
 
-        $pivotData = $pembayaran->siswa()->where('user_id', $user->id)->first()?->pivot;
-        $status = $pivotData?->status ?? 'belum-lunas';
+        $pivot = $pembayaran->siswa()->where('user_id', $user->id)->first()?->pivot;
+        $statusRaw = $this->normalizeStatus($pivot?->status ?? 'belum-lunas');
 
-        // Hanya generate token jika status = 'belum-lunas'
-        if ($status !== 'belum-lunas') {
+        // Hanya boleh generate token jika status masih menunggu/ belum lunas
+        if (!$this->isWaiting($statusRaw)) {
             return response()->json([
-                'error' => 'Pembayaran tidak dalam status belum-lunas'
+                'error' => 'Tagihan tidak dalam status menunggu pembayaran'
             ], 400);
         }
 
-        // Load konfigurasi Midtrans (nested di config/midtrans.php)
+        // Load konfigurasi Midtrans
         Config::$serverKey    = config('midtrans.midtrans.server_key');
         Config::$isProduction = config('midtrans.midtrans.is_production');
         Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
@@ -75,7 +79,7 @@ class SiswaPembayaranController extends Controller
         $params = [
             'transaction_details' => [
                 'order_id'     => 'ORDER-' . $pembayaran->id . '-USER-' . $user->id . '-' . time(),
-                'gross_amount' => $pembayaran->jumlah,
+                'gross_amount' => (int) $pembayaran->jumlah,
             ],
             'customer_details'    => [
                 'first_name' => $user->name,
@@ -88,15 +92,12 @@ class SiswaPembayaranController extends Controller
             $snapToken = Snap::getSnapToken($params);
         } catch (\Exception $e) {
             Log::error("Midtrans Snap Token Error (generateToken): " . $e->getMessage());
-            return response()->json([ 
+            return response()->json([
                 'error' => 'Gagal generate token: ' . $e->getMessage()
             ], 500);
         }
 
-        // Kembalikan JSON dengan token
-        return response()->json([
-            'snapToken' => $snapToken
-        ]);
+        return response()->json(['snapToken' => $snapToken]);
     }
 
     /**
@@ -123,80 +124,87 @@ class SiswaPembayaranController extends Controller
     }
 
     /**
-     * Callback Midtrans (webhook) untuk men‐update status transfer menjadi lunas/dibatalkan.
+     * Callback Midtrans (webhook) untuk update status transfer
      * Route: POST /midtrans/notification
      */
     public function notificationHandler(Request $request)
-    {
-        // Load konfigurasi Midtrans agar Notification dapat memverifikasi
-        Config::$serverKey    = config('midtrans.midtrans.server_key');
-        Config::$isProduction = config('midtrans.midtrans.is_production');
-        Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
-        Config::$is3ds        = config('midtrans.midtrans.is_3ds');
+{
+    // Pastikan config Midtrans
+    Config::$serverKey    = config('midtrans.midtrans.server_key');     // konsisten
+    Config::$isProduction = config('midtrans.midtrans.is_production');
+    Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
+    Config::$is3ds        = config('midtrans.midtrans.is_3ds');
 
-        $notification = new Notification(); // membaca JSON dari Midtrans otomatis
+    // Log payload mentah (debug)
+    Log::info('Notification Received', ['json' => $request->all()]);
 
-        $transactionStatus = $notification->transaction_status; // mis: 'settlement'
-        $paymentType       = $notification->payment_type;       // mis: 'bank_transfer'
-        $orderId           = $notification->order_id;           // format: ORDER-{pembayaran_id}-USER-{user_id}-{timestamp}
-        $signatureKey      = $notification->signature_key;      // signature untuk verifikasi
-        $grossAmount       = $notification->gross_amount;       // jumlah transaksi
-        $fraudStatus       = $notification->fraud_status ?? null; // mis: 'accept'
+    try {
+        $notification = new Notification();
 
-        // Verifikasi signature
-        $serverKey = config('midtrans.midtrans.server_key');
-        $expectedSignature = hash('sha512', $orderId.$transactionStatus.$grossAmount.$serverKey);
+        $transactionStatus = $notification->transaction_status;
+        $paymentType       = $notification->payment_type;
+        $orderId           = $notification->order_id;
+        $signatureKey      = $notification->signature_key;
+        $grossAmount       = $notification->gross_amount;   // string "20000.00"
+        $statusCode        = $notification->status_code ?? null;
+        $fraudStatus       = $notification->fraud_status ?? null;
 
-        if ($signatureKey !== $expectedSignature) {
+        // Signature resmi + fallback lama
+        $serverKey  = config('midtrans.midtrans.server_key');
+        $sigOfficial = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+        $sigLegacy   = hash('sha512', $orderId.$transactionStatus.$grossAmount.$serverKey);
+
+        if (!hash_equals($signatureKey, $sigOfficial) && !hash_equals($signatureKey, $sigLegacy)) {
             Log::warning("[Midtrans] Invalid signature: {$orderId}");
-            return response()->json(['message' => 'Invalid signature'], 403);
+            return response()->json(['ok' => true]); // balas 200 supaya Midtrans tidak retry terus
         }
 
-        // Extract pembayaran_id dan user_id dari order_id
-        $parts = explode('-', $orderId);
-        $idPembayaran = $parts[1] ?? null;
-        $userId = $parts[3] ?? null;
-
-        if (!$idPembayaran || !$userId) {
-            Log::warning("[Midtrans] Order ID format tidak valid: {$orderId}");
-            return response()->json(['message' => 'Invalid order_id format'], 400);
+        if (!preg_match('/^ORDER-(\d+)-USER-(\d+)-\d+$/', (string) $orderId, $m)) {
+            Log::warning("[Midtrans] Invalid order_id format: {$orderId}");
+            return response()->json(['ok' => true]);
         }
+        $idPembayaran = (int) $m[1];
+        $userId       = (int) $m[2];
 
-        // Cari model Pembayaran
         $pembayaran = Pembayaran::find($idPembayaran);
         if (!$pembayaran) {
-            Log::warning("[Midtrans] Pembayaran ID {$idPembayaran} tidak ditemukan");
-            return response()->json(['message' => 'Pembayaran not found'], 404);
+            Log::warning("[Midtrans] Pembayaran {$idPembayaran} tidak ditemukan");
+            return response()->json(['ok' => true]);
+        }
+        $pivot = $pembayaran->siswa()->where('user_id', $userId)->first()?->pivot;
+        if (!$pivot) {
+            Log::warning("[Midtrans] Pivot {$idPembayaran} user {$userId} tidak ditemukan");
+            return response()->json(['ok' => true]);
         }
 
-        // Cari pivot baris untuk user ini
-        $pivotData = $pembayaran->siswa()->where('user_id', $userId)->first()?->pivot;
-        if (!$pivotData) {
-            Log::warning("[Midtrans] Pivot untuk pembayaran {$idPembayaran} dan user {$userId} tidak ditemukan");
-            return response()->json(['message' => 'Pivot not found'], 404);
+        // CC capture + accept -> settlement
+        if ($paymentType === 'credit_card' && $transactionStatus === 'capture' && ($fraudStatus === 'accept')) {
+            $transactionStatus = 'settlement';
         }
 
-        // Tangani masing‐masing status transaksi
+        // Idempotent
+        if (($pivot->status ?? null) === 'lunas' && $transactionStatus === 'settlement') {
+            return response()->json(['ok' => true]);
+        }
+
         if ($transactionStatus === 'settlement') {
-            // Pembayaran berhasil → set status = 'lunas'
+            $settledAt = $notification->settlement_time ?? now();
+
             $pembayaran->siswa()->syncWithoutDetaching([
                 $userId => [
                     'status'             => 'lunas',
                     'metode'             => 'transfer',
-                    'tanggal_pembayaran' => now(),
+                    'tanggal_pembayaran' => $settledAt,
                     'payment_type'       => $paymentType,
                     'transaction_status' => $transactionStatus,
+                    'jumlah_bayar'       => (int) round((float)$grossAmount), // simpan nominal
+                    'order_id'           => $orderId,
                 ]
             ]);
 
-            // Pembaruan status di tabel utama
-            $pembayaran->update([
-                'status' => 'Lunas',
-            ]);
-
-            Log::info("[Midtrans] Pembayaran ID {$idPembayaran} untuk user {$userId} telah lunas");
-        } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire'])) {
-            // Pembayaran gagal atau dibatalkan → set status = 'dibatalkan'
+            $pembayaran->update(['status' => 'Lunas']);
+            Log::info("[Midtrans] SETTLED pembayaran {$idPembayaran} user {$userId}");
+        } elseif (in_array($transactionStatus, ['deny','cancel','expire'])) {
             $pembayaran->siswa()->syncWithoutDetaching([
                 $userId => [
                     'status'             => 'dibatalkan',
@@ -204,12 +212,44 @@ class SiswaPembayaranController extends Controller
                     'transaction_status' => $transactionStatus,
                 ]
             ]);
-
-            Log::info("[Midtrans] Pembayaran ID {$idPembayaran} untuk user {$userId} status: {$transactionStatus}");
+            Log::info("[Midtrans] {$transactionStatus} pembayaran {$idPembayaran} user {$userId}");
         } else {
-            Log::info("[Midtrans] Status transaksi lain untuk {$orderId}: {$transactionStatus}");
+            $pembayaran->siswa()->syncWithoutDetaching([
+                $userId => [
+                    'status'             => 'menunggu-pembayaran',
+                    'payment_type'       => $paymentType,
+                    'transaction_status' => $transactionStatus,
+                ]
+            ]);
+            Log::info("[Midtrans] OTHER {$transactionStatus} {$orderId}");
         }
 
-        return response()->json(['message' => 'Notifikasi Midtrans diproses']);
+        return response()->json(['ok' => true]); // selalu 200
+    } catch (\Throwable $e) {
+        Log::error('[Midtrans] EXCEPTION: '.$e->getMessage().' @ '.$e->getFile().':'.$e->getLine());
+        return response()->json(['ok' => true]); // 200 supaya tidak 502 di ngrok
+    }
+}
+
+
+    /* ===========================
+     * Helpers
+     * =========================== */
+    private function normalizeStatus(string $status): string
+    {
+        $raw = strtolower(trim($status));
+        $raw = str_replace(['_', ' '], '-', $raw);
+
+        $waiting = ['belum-lunas','menunggu-pembayaran','pending','unpaid'];
+        if (in_array($raw, $waiting)) return 'belum-lunas';
+        if ($raw === 'menunggu-verifikasi') return 'menunggu-verifikasi';
+        if ($raw === 'lunas') return 'lunas';
+        if (in_array($raw, ['dibatalkan','batal','cancelled'])) return 'dibatalkan';
+        return $raw;
+    }
+
+    private function isWaiting(string $normalized): bool
+    {
+        return in_array($normalized, ['belum-lunas','dibatalkan']); // boleh bayar ulang kalau dibatalkan
     }
 }
