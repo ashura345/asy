@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PembayaranController;
-use App\Http\Controllers\Webhook\MidtransWebhookController;
+use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\SiswaAuthController;
+use App\Http\Controllers\Webhook\MidtransWebhookController;
+use App\Models\Tagihan;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Cache\Repository;
 use illuminate\Http\Request;
@@ -27,16 +29,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/riwayat',     [PembayaranController::class, 'riwayat'])->name('api.riwayat');
 });
 
-Route::get('/test', function (){
-    return Response()->json([
-        'status' => 'success',
-        'message' => 'Api berhasil terhubung ke flutter!'
-    ]);
-});
+Route::get('/tagihan/{nis}', [TagihanController::class, 'getSummary']);
 
-Route::post('/cekpost', function (Request $request) {
-    return response()->json([
-        'message' => 'POST diterima',
-        'body' => $request->all()
-    ]);
-});
+// UNTUK MENGETES API SAJA
+// Route::get('/test', function (){
+//     return Response()->json([
+//         'status' => 'success',
+//         'message' => 'Api berhasil terhubung ke flutter!'
+//     ]);
+// });
+
+// Route::post('/cekpost', function (Request $request) {
+//     return response()->json([
+//         'message' => 'POST diterima',
+//         'body' => $request->all()
+//     ]);
+// });
