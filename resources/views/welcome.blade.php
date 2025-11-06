@@ -94,7 +94,7 @@
                 <p class="text-lg mt-4">Anda sudah login sebagai <strong>{{ auth()->user()->name }}</strong>.</p>
             @else
                 <p class="text-lg mt-4 mb-6">Silakan login untuk melanjutkan ke sistem pembayaran.</p>
-                <a href="{{ route('login') }}" class="btn-primary inline-block shadow-md">Masuk Sekarang</a>
+                <a href="{{ route('login') }}" class="btn-primary inline-block shadow-md">Login Sekarang</a>
             @endauth
         </div>
     </div>
