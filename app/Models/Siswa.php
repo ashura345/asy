@@ -1,14 +1,17 @@
 <?php
 
-namespace App\Models; // atau namespace sesuai struktur projek kamu
+namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Siswa extends Model
+class Siswa extends Authenticatable
 {
-    // Tentukan nama tabel kalau tabelnya bukan plural "siswas"
+    use HasApiTokens;
+
     protected $table = 'siswa';
 
-    // Kalau kamu pakai guarded atau fillable, isi sesuai kebutuhan
-    protected $fillable = ['name', 'nis', 'kelas', 'tahun_ajaran', 'email', 'password', 'role'];
+    protected $fillable = ['nama', 'nis', 'password'];
+
+    protected $hidden = ['password'];
 }
