@@ -11,40 +11,28 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        $cred = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+        $request->validate([
+            'nis' => 'required',
+            'password' => 'required',
         ]);
 
-        $user = User::where('email', $cred['email'])->first();
+        $user = User::where('nis', $request->nis)->first();
 
-        if (!$user || !Hash::check($cred['password'], $user->password)) {
-            return response()->json(['message' => 'Email atau password salah'], 401);
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'NIS atau password salah',
+            ], 401);
         }
 
-        // token personal (untuk mobile/web)
-        $token = $user->createToken('mobile')->plainTextToken;
+        // Token Sanctum
+        $token = $user->createToken('flutter-token')->plainTextToken;
 
         return response()->json([
+            'status' => 'success',
+            'message' => 'Login berhasil',
+            'user' => $user,
             'token' => $token,
-            'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-                'kelas' => $user->kelas,
-                'role'  => $user->role,
-            ]
         ]);
-    }
-
-    public function me(Request $request)
-    {
-        return response()->json($request->user());
-    }
-
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out']);
     }
 }

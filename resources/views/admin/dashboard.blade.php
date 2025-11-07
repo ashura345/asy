@@ -13,14 +13,14 @@
             <div class="col-span-2">
                 <label class="block text-xs text-gray-500 mb-1">Dari Tanggal</label>
                 <input type="date" name="start_date"
-                       value="{{ optional($startDate ?? null)->format('Y-m-d') }}"
-                       class="w-full border rounded px-3 py-2 text-sm">
+                    value="{{ optional($startDate ?? null)->format('Y-m-d') }}"
+                    class="w-full border rounded px-3 py-2 text-sm">
             </div>
             <div class="col-span-2">
                 <label class="block text-xs text-gray-500 mb-1">Sampai Tanggal</label>
                 <input type="date" name="end_date"
-                       value="{{ optional($endDate ?? null)->format('Y-m-d') }}"
-                       class="w-full border rounded px-3 py-2 text-sm">
+                    value="{{ optional($endDate ?? null)->format('Y-m-d') }}"
+                    class="w-full border rounded px-3 py-2 text-sm">
             </div>
             <div class="col-span-1 flex items-end">
                 <button class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white rounded px-4 py-2 text-sm">
@@ -162,11 +162,11 @@
             <div class="mt-4">
                 {{-- Arahkan ke halaman laporan lengkap --}}
                 <a href="{{ route('admin.laporan.index') }}"
-                   class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
                     Lihat Semua Transaksi
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                         stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                         d="M9 5l7 7-7 7"/></svg>
+                        stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5l7 7-7 7"/></svg>
                 </a>
             </div>
         @endif
