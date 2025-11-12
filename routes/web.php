@@ -176,3 +176,9 @@ Route::get('/grafik-pembayaran', function () {
  // === ROUTE KANONIK WEBHOOK MIDTRANS (TANPA PREFIX) ===
 Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])
     ->name('midtrans.notification');
+
+    // routes/web.php
+Route::get('/chatbot', function () {
+    return view('chatbot'); // nanti kita buat resources/views/chatbot.blade.php
+});
+

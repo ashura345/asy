@@ -112,6 +112,39 @@
         }
     </style>
 </head>
+<!-- === CHATBOT BUTTON DAN POPUP === -->
+<div id="chatButton"
+    class="fixed bottom-5 right-5 bg-green-600 text-white p-4 rounded-full shadow-lg text-xl cursor-pointer hover:bg-green-700 transition z-50">
+    💬
+</div>
+
+<div id="chatPopup"
+    class="hidden fixed bottom-20 right-5 bg-white w-80 h-[500px] rounded-xl shadow-2xl flex flex-col overflow-hidden z-50">
+    <div class="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
+        <span class="font-semibold">Asisten ASY-PAY</span>
+        <button id="closeChat" class="text-white text-lg font-bold hover:text-gray-200">×</button>
+    </div>
+    <iframe src="{{ url('/chatbot') }}" class="flex-1 border-0"></iframe>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const chatBtn = document.getElementById('chatButton');
+        const chatPopup = document.getElementById('chatPopup');
+        const closeChat = document.getElementById('closeChat');
+
+        chatBtn.addEventListener('click', () => {
+            chatPopup.classList.toggle('hidden');
+        });
+
+        closeChat.addEventListener('click', () => {
+            chatPopup.classList.add('hidden');
+        });
+    });
+</script>
+<!-- === END CHATBOT === -->
+
+
 <body>
     <div class="wrapper">
         <aside class="sidebar">
