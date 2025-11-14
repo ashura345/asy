@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Siswa;
+use App\Models\User;                   // <- pakai User karena data siswa ada di tabel users
 use App\Models\KategoriPembayaran;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -35,7 +35,7 @@ class DashboardController extends Controller
         $nominalLunasCount = (int) (clone $nominalLunasQuery)->count();
 
         // ================================================================
-        // 2) Kartu "Total Outstanding" (disuplai agar Blade lama tidak rusak) + COUNT
+        // 2) Kartu "Total Outstanding" + COUNT
         // ================================================================
         $outstandingQuery = DB::table('pembayaran_user as pu')
             ->join('pembayarans as p', 'pu.pembayaran_id', '=', 'p.id')
@@ -54,16 +54,25 @@ class DashboardController extends Controller
         $totalTransaksiCount = $totalTransaksi;                       // alias jelas
 
         // ================================================================
-        // 4) Data siswa: total + opsi per kelas (+ COUNT alias)
+        // 4) DATA SISWA (pakai tabel users: role = 'siswa')
+        //    - total siswa (COUNT)
+        //    - distribusi per kelas untuk dropdown & live update
         // ================================================================
-        $kelasCounts = Siswa::selectRaw('kelas, COUNT(*) as total')
+        $studentsBase = User::query()->where('role', 'siswa');  // sesuaikan bila nama role beda
+
+        // total semua siswa
+        $totalSiswaCount = (int) (clone $studentsBase)->count();
+        $totalSiswa      = $totalSiswaCount;                    // kompatibel dengan Blade
+
+        // hitung per kelas (abaikan yang kelas-nya null)
+        $kelasCounts = (clone $studentsBase)
+            ->whereNotNull('kelas')
+            ->select('kelas', DB::raw('COUNT(*) as total'))
             ->groupBy('kelas')
             ->orderBy('kelas')
-            ->pluck('total', 'kelas'); // ['1'=>5, '2'=>6, ...]
+            ->pluck('total', 'kelas');                          // ['10A'=>32, '10B'=>30, ...]
 
-        $totalSiswa       = $kelasCounts->sum();      // variabel lama
-        $totalSiswaCount  = $totalSiswa;              // alias count
-        $kelasOptions     = $kelasCounts->keys()->values(); // ['1','2','3',...]
+        $kelasOptions = $kelasCounts->keys()->values();         // ['10A','10B',...]
 
         // ================================================================
         // 5) Pengingat jatuh tempo (tidak dipakai, set 0 agar Blade aman)

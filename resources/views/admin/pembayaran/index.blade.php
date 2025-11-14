@@ -3,15 +3,18 @@
 @section('title', 'Daftar Pembayaran')
 
 @section('content')
-<div class="container mx-auto px-4 mt-6">
-    <h1 class="text-2xl font-bold mb-6">Daftar Pembayaran</h1>
+<div class="container mx-auto px-4">
+    <h1 class="text-2xl font-bold mb-4">Daftar Pembayaran</h1>
 
-    <div class="flex justify-between items-center mb-4">
-        <a href="{{ route('admin.pembayaran.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
-            + Tambah Pembayaran
+    {{-- Toolbar responsif: tombol tambah + form pencarian --}}
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <a href="{{ route('admin.pembayaran.create') }}"
+           class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+           + Tambah Pembayaran
         </a>
 
-        <form action="{{ route('admin.pembayaran.index') }}" method="GET" class="flex items-center space-x-2">
+        <form action="{{ route('admin.pembayaran.index') }}" method="GET"
+              class="flex flex-wrap items-center gap-2">
             <input
                 type="text"
                 name="search"
@@ -22,6 +25,13 @@
             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded">
                 Cari
             </button>
+
+            @if(request()->filled('search'))
+                <a href="{{ route('admin.pembayaran.index') }}"
+                   class="px-3 py-1 border rounded text-gray-700">
+                   Reset
+                </a>
+            @endif
         </form>
     </div>
 
@@ -31,8 +41,8 @@
         </div>
     @endif
 
-    <div class="overflow-x-auto rounded shadow border border-gray-300">
-        <table class="min-w-full bg-white">
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-300 rounded shadow-sm">
             <thead class="bg-blue-100 text-left">
                 <tr>
                     <th class="py-3 px-4 border-b">#</th>
@@ -58,11 +68,13 @@
                             {{ $pembayaran->tanggal_tempo ? \Carbon\Carbon::parse($pembayaran->tanggal_tempo)->format('d-m-Y') : '-' }}
                         </td>
                         <td class="py-2 px-4 border-b space-x-2">
-                            <a href="{{ route('admin.pembayaran.edit', $pembayaran->id) }}" 
+                            <a href="{{ route('admin.pembayaran.edit', $pembayaran->id) }}"
                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
                                Edit
                             </a>
-                            <form action="{{ route('admin.pembayaran.destroy', $pembayaran->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
+                            <form action="{{ route('admin.pembayaran.destroy', $pembayaran->id) }}"
+                                  method="POST" class="inline-block"
+                                  onsubmit="return confirm('Yakin hapus pembayaran ini?')">
                                 @csrf
                                 @method('DELETE')
                                 <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
