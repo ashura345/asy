@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,14 +10,21 @@ use App\Models\Pembayaran;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
 
     protected $fillable = [
-        'name', 'nis', 'kelas', 'role', 'tahun_ajaran', 'email', 'password'
+        'name',
+        'nis',
+        'kelas',
+        'role',
+        'tahun_ajaran',
+        'email',
+        'password'
     ];
 
     protected $hidden = [
-        'password', 'remember_token'
+        'password',
+        'remember_token'
     ];
 
     /**
