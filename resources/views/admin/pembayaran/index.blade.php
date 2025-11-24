@@ -6,15 +6,44 @@
 <div class="container mx-auto px-4">
     <h1 class="text-2xl font-bold mb-4">Daftar Pembayaran</h1>
 
-    {{-- Toolbar responsif: tombol tambah + form pencarian --}}
+    {{-- Toolbar responsif: tombol tambah + form pencarian & filter --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <a href="{{ route('admin.pembayaran.create') }}"
            class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
-           + Tambah Pembayaran
+            + Tambah Pembayaran
         </a>
 
+        {{-- Tambahkan ID pada form agar mudah diakses di JavaScript --}}
         <form action="{{ route('admin.pembayaran.index') }}" method="GET"
-              class="flex flex-wrap items-center gap-2">
+              id="filterPembayaranForm" class="flex flex-wrap items-center gap-2">
+
+            {{-- Filter Kategori (Otomatis) --}}
+            <select name="kategori" id="kategoriSelect" class="border border-gray-300 rounded px-3 py-1">
+                <option value="">Semua Kategori</option>
+                {{-- Asumsi Anda memiliki variabel $kategoriList yang berisi daftar kategori --}}
+                @isset($kategoriList)
+                    @foreach($kategoriList as $kategoriId => $kategoriNama)
+                        <option value="{{ $kategoriId }}" {{ request('kategori') == $kategoriId ? 'selected' : '' }}>
+                            {{ $kategoriNama }}
+                        </option>
+                    @endforeach
+                @endisset
+            </select>
+
+            {{-- Filter Kelas (Otomatis) --}}
+            <select name="kelas" id="kelasSelect" class="border border-gray-300 rounded px-3 py-1">
+                <option value="">Semua Kelas</option>
+                {{-- Asumsi Anda memiliki variabel $kelasList yang berisi daftar kelas --}}
+                @isset($kelasList)
+                    @foreach($kelasList as $kelas)
+                        <option value="{{ $kelas }}" {{ request('kelas') == $kelas ? 'selected' : '' }}>
+                            {{ $kelas }}
+                        </option>
+                    @endforeach
+                @endisset
+            </select>
+
+            {{-- Input Pencarian Umum (Perlu klik Cari) --}}
             <input
                 type="text"
                 name="search"
@@ -22,14 +51,15 @@
                 placeholder="Cari nama, kelas, kategori..."
                 class="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring focus:ring-blue-300"
             />
+            
             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded">
                 Cari
             </button>
 
-            @if(request()->filled('search'))
+            @if(request()->filled('search') || request()->filled('kategori') || request()->filled('kelas'))
                 <a href="{{ route('admin.pembayaran.index') }}"
                    class="px-3 py-1 border rounded text-gray-700">
-                   Reset
+                    Reset
                 </a>
             @endif
         </form>
@@ -70,7 +100,7 @@
                         <td class="py-2 px-4 border-b space-x-2">
                             <a href="{{ route('admin.pembayaran.edit', $pembayaran->id) }}"
                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
-                               Edit
+                                Edit
                             </a>
                             <form action="{{ route('admin.pembayaran.destroy', $pembayaran->id) }}"
                                   method="POST" class="inline-block"
@@ -96,4 +126,36 @@
         {{ $pembayarans->withQueryString()->links() }}
     </div>
 </div>
+
+{{-- Tambahkan script JavaScript di sini --}}
+@push('scripts')
+<script>
+    // Ambil elemen select dan form
+    const kategoriSelect = document.getElementById('kategoriSelect');
+    const kelasSelect = document.getElementById('kelasSelect');
+    const filterPembayaranForm = document.getElementById('filterPembayaranForm');
+
+    // Fungsi untuk mengirimkan form
+    const submitFilter = () => {
+        filterPembayaranForm.submit();
+    };
+         frckdgsx    
+    // Tambahkan event listener untuk Kategori
+    if (kategoriSelect) {
+        kategoriSelect.addEventListener('change', submitFilter);
+    }
+
+    // Tambahkan event listener untuk Kelas
+    if (kelasSelect) {
+        kelasSelect.addEventListener('change', submitFilter);
+    }
+</script>
+@endpush
+
 @endsection
+
+
+
+
+
+

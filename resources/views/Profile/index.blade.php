@@ -29,6 +29,17 @@
         <tr><td><b>Email</b></td><td>: {{ $user->email }}</td></tr>
     </table>
 
+    <!-- Button Actions -->
+    <div class="button-group">
+        @if(auth()->user()->role === 'siswa')
+            <a href="{{ route('siswa.dashboard') }}" class="btn-custom btn-secondary">
+                <i class="fa fa-arrow-left"></i> Kembali
+            </a>
+        @else
+            <a href="{{ route('admin.dashboard') }}" class="btn-custom btn-secondary">
+                <i class="fa fa-arrow-left"></i> Kembali
+            </a>
+        @endif
     <a href="{{ route('profile.edit') }}" class="btn">Edit Profil</a>
 
 </div>
