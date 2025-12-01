@@ -4,36 +4,33 @@
 
 @section('content')
 <div class="container mx-auto px-4">
-    <h1 class="text-2xl font-bold mb-4">Daftar Pembayaran</h1>
+    <h1 class="text-2xl font-bold mb-6">Daftar Pembayaran</h1>
 
     {{-- Toolbar responsif: tombol tambah + form pencarian & filter --}}
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <a href="{{ route('admin.pembayaran.create') }}"
-           class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+           class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md shadow-md">
             + Tambah Pembayaran
         </a>
 
-        {{-- Tambahkan ID pada form agar mudah diakses di JavaScript --}}
-        <form action="{{ route('admin.pembayaran.index') }}" method="GET"
-              id="filterPembayaranForm" class="flex flex-wrap items-center gap-2">
+        {{-- Form Pencarian & Filter --}}
+        <form action="{{ route('admin.pembayaran.index') }}" method="GET" id="filterPembayaranForm" class="flex flex-wrap items-center gap-4">
+            {{-- Filter Kategori --}}
+            <select name="kategori" id="kategoriSelect" class="border border-gray-300 rounded px-3 py-2">
+    <option value="">Semua Kategori</option>
+    @isset($kategoriList)
+        @foreach($kategoriList as $kategori)
+            <option value="{{ $kategori->id }}" {{ request('kategori') == $kategori->id ? 'selected' : '' }}>
+                {{ $kategori->nama }} <!-- Hanya nama kategori yang ditampilkan -->
+            </option>
+        @endforeach
+    @endisset
+</select>
 
-            {{-- Filter Kategori (Otomatis) --}}
-            <select name="kategori" id="kategoriSelect" class="border border-gray-300 rounded px-3 py-1">
-                <option value="">Semua Kategori</option>
-                {{-- Asumsi Anda memiliki variabel $kategoriList yang berisi daftar kategori --}}
-                @isset($kategoriList)
-                    @foreach($kategoriList as $kategoriId => $kategoriNama)
-                        <option value="{{ $kategoriId }}" {{ request('kategori') == $kategoriId ? 'selected' : '' }}>
-                            {{ $kategoriNama }}
-                        </option>
-                    @endforeach
-                @endisset
-            </select>
 
-            {{-- Filter Kelas (Otomatis) --}}
-            <select name="kelas" id="kelasSelect" class="border border-gray-300 rounded px-3 py-1">
+            {{-- Filter Kelas --}}
+            <select name="kelas" id="kelasSelect" class="border border-gray-300 rounded px-3 py-2">
                 <option value="">Semua Kelas</option>
-                {{-- Asumsi Anda memiliki variabel $kelasList yang berisi daftar kelas --}}
                 @isset($kelasList)
                     @foreach($kelasList as $kelas)
                         <option value="{{ $kelas }}" {{ request('kelas') == $kelas ? 'selected' : '' }}>
@@ -43,36 +40,39 @@
                 @endisset
             </select>
 
-            {{-- Input Pencarian Umum (Perlu klik Cari) --}}
+            {{-- Input Pencarian --}}
             <input
                 type="text"
                 name="search"
                 value="{{ request('search') }}"
                 placeholder="Cari nama, kelas, kategori..."
-                class="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring focus:ring-blue-300"
+                class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300"
             />
             
-            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded">
+            {{-- Tombol Cari --}}
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">
                 Cari
             </button>
 
+            {{-- Reset Filter --}}
             @if(request()->filled('search') || request()->filled('kategori') || request()->filled('kelas'))
-                <a href="{{ route('admin.pembayaran.index') }}"
-                   class="px-3 py-1 border rounded text-gray-700">
+                <a href="{{ route('admin.pembayaran.index') }}" class="px-3 py-2 border rounded-md text-gray-700">
                     Reset
                 </a>
             @endif
         </form>
     </div>
 
+    {{-- Menampilkan pesan sukses --}}
     @if(session('success'))
         <div class="bg-green-200 text-green-800 px-4 py-2 rounded mb-4">
             {{ session('success') }}
         </div>
     @endif
 
+    {{-- Tabel Daftar Pembayaran --}}
     <div class="overflow-x-auto">
-        <table class="min-w-full bg-white border border-gray-300 rounded shadow-sm">
+        <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
             <thead class="bg-blue-100 text-left">
                 <tr>
                     <th class="py-3 px-4 border-b">#</th>
@@ -91,23 +91,22 @@
                         <td class="py-2 px-4 border-b">{{ $pembayarans->firstItem() + $index }}</td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->nama }}</td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->kategori->nama ?? '-' }}</td>
-                        <td class="py-2 px-4 border-b">{{ $pembayaran->kelas ?? '' }}</td>
-                        <td class="py-2 px-4 border-b">Rp {{ number_format($pembayaran->jumlah, 2, ',', '.') }}</td>
+                        <td class="py-2 px-4 border-b">{{ $pembayaran->kelas ?? '-' }}</td>
+                        <td class="py-2 px-4 border-b text-right">Rp {{ number_format($pembayaran->jumlah, 2, ',', '.') }}</td>
                         <td class="py-2 px-4 border-b">{{ \Carbon\Carbon::parse($pembayaran->tanggal_buat)->format('d-m-Y') }}</td>
                         <td class="py-2 px-4 border-b">
                             {{ $pembayaran->tanggal_tempo ? \Carbon\Carbon::parse($pembayaran->tanggal_tempo)->format('d-m-Y') : '-' }}
                         </td>
                         <td class="py-2 px-4 border-b space-x-2">
                             <a href="{{ route('admin.pembayaran.edit', $pembayaran->id) }}"
-                               class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+                               class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm">
                                 Edit
                             </a>
-                            <form action="{{ route('admin.pembayaran.destroy', $pembayaran->id) }}"
-                                  method="POST" class="inline-block"
+                            <form action="{{ route('admin.pembayaran.destroy', $pembayaran->id) }}" method="POST" class="inline-block"
                                   onsubmit="return confirm('Yakin hapus pembayaran ini?')">
                                 @csrf
                                 @method('DELETE')
-                                <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm">
                                     Hapus
                                 </button>
                             </form>
@@ -122,7 +121,8 @@
         </table>
     </div>
 
-    <div class="mt-4">
+    {{-- Pagination --}}
+    <div class="mt-6">
         {{ $pembayarans->withQueryString()->links() }}
     </div>
 </div>
@@ -139,7 +139,7 @@
     const submitFilter = () => {
         filterPembayaranForm.submit();
     };
-         frckdgsx    
+
     // Tambahkan event listener untuk Kategori
     if (kategoriSelect) {
         kategoriSelect.addEventListener('change', submitFilter);
@@ -153,9 +153,3 @@
 @endpush
 
 @endsection
-
-
-
-
-
-

@@ -106,6 +106,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', [LaporanController::class, 'index'])->name('index');
             Route::get('/export/excel', [LaporanController::class, 'exportExcel'])->name('export.excel');
             Route::get('/export/pdf', [LaporanController::class, 'exportPDF'])->name('export.pdf');
+             Route::post('laporan/kirim-email/{id}', [LaporanController::class, 'kirimEmailTunggakan'])
+        ->name('laporan.kirimEmail');
+            // kirim email tunggakan
+        Route::post('laporan/kirim-email/{id}', [LaporanController::class, 'kirimEmailTunggakan'])
+        ->name('laporan.kirimEmail');
         });
     });
 
@@ -162,6 +167,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/download-pdf', [ProfileController::class, 'downloadPdf'])->name('profile.downloadPdf');
+
 });
 
 // ================== CHART ROUTES ==================

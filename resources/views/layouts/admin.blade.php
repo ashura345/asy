@@ -22,7 +22,7 @@
             --brand-green: #4CAF50;
             --brand-green-dark: #388E3C;
             --sidebar-w: 240px;
-            --sidebar-w-mini: 72px;
+            --sidebar-w-mini: 88px; /* mini sidebar agak lebih lebar, biar logo besar muat */
         }
 
         * {
@@ -58,25 +58,18 @@
         .sidebar .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
             justify-content: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 2px solid rgba(0, 123, 51, 0.1);
         }
 
+        /* LOGO SIDEBAR (LEBIH BESAR) */
         .sidebar .brand .brand-logo {
-            width: 42px;
-            height: 42px;
+            width: 72px;
+            height: 72px;
             object-fit: contain;
-            border-radius: 8px;
-        }
-
-        .sidebar .brand .brand-text {
-            font-size: 22px;
-            font-weight: 700;
-            color: #007b33;
-            white-space: nowrap;
+            border-radius: 10px;
         }
 
         .sidebar ul {
@@ -135,10 +128,6 @@
             padding: 20px 8px;
         }
 
-        .sidebar.mini .brand .brand-text {
-            display: none;
-        }
-
         .sidebar.mini .menu-text {
             opacity: 0;
             width: 0;
@@ -174,11 +163,6 @@
         .sidebar.mini.hover-open {
             width: var(--sidebar-w);
             padding: 20px 16px;
-        }
-
-        .sidebar.mini:hover .brand .brand-text,
-        .sidebar.mini.hover-open .brand .brand-text {
-            display: inline;
         }
 
         .sidebar.mini:hover .menu-text,
@@ -250,9 +234,10 @@
             transform: scale(0.95);
         }
 
+        /* LOGO NAVBAR LEBIH BESAR */
         .navbar img.logo {
-            height: 44px;
-            border-radius: 8px;
+            height: 64px;
+            border-radius: 10px;
         }
 
         /* User Info dengan Profile Picture */
@@ -391,10 +376,6 @@
                 padding: 20px 8px;
             }
 
-            .sidebar .brand .brand-text {
-                display: none;
-            }
-
             .menu-text {
                 opacity: 0;
                 width: 0;
@@ -420,7 +401,7 @@
 
         @media (max-width: 480px) {
             .navbar img.logo {
-                height: 36px;
+                height: 48px; /* tetap lebih kecil di HP tapi masih jelas */
             }
 
             .toggle-btn {
@@ -453,8 +434,8 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="appSidebar">
             <div class="brand">
+                {{-- HANYA LOGO, TANPA TULISAN ASY-PAY --}}
                 <img src="{{ asset('images/logo.jpg') }}" class="brand-logo" alt="Logo">
-                <span class="brand-text">ASY-PAY</span>
             </div>
 
             <ul>
@@ -495,6 +476,11 @@
                         <a href="{{ route('admin.kasir.index') }}" data-title="Kasir" class="{{ request()->routeIs('admin.kasir.*') ? 'active' : '' }}">
                             <i class="fa fa-cash-register"></i>
                             <span class="menu-text">Kasir</span>
+                        </a>
+                     <li>
+                        <a href="{{ route('profile.index') }}" data-title="Profil" class="{{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                            <i class="fa fa-user-circle"></i>
+                            <span class="menu-text">Profil</span>
                         </a>
                     </li>
                 @elseif($role === 'siswa')
@@ -547,29 +533,19 @@
                             $photoUrl = null;
                             
                             if ($user->foto) {
-                                // Jika foto adalah URL lengkap
                                 if (filter_var($user->foto, FILTER_VALIDATE_URL)) {
                                     $photoUrl = $user->foto;
-                                }
-                                // Cek di storage/app/public (RECOMMENDED)
-                                elseif (file_exists(storage_path('app/public/' . $user->foto))) {
+                                } elseif (file_exists(storage_path('app/public/' . $user->foto))) {
                                     $photoUrl = asset('storage/' . $user->foto);
-                                }
-                                // Cek di public/foto_siswa
-                                elseif (file_exists(public_path('foto_siswa/' . $user->foto))) {
+                                } elseif (file_exists(public_path('foto_siswa/' . $user->foto))) {
                                     $photoUrl = asset('foto_siswa/' . $user->foto);
-                                }
-                                // Cek di public/images/users
-                                elseif (file_exists(public_path('images/users/' . $user->foto))) {
+                                } elseif (file_exists(public_path('images/users/' . $user->foto))) {
                                     $photoUrl = asset('images/users/' . $user->foto);
-                                }
-                                // Cek path langsung di public
-                                elseif (file_exists(public_path($user->foto))) {
+                                } elseif (file_exists(public_path($user->foto))) {
                                     $photoUrl = asset($user->foto);
                                 }
                             }
                             
-                            // Fallback ke default avatar
                             $finalPhotoUrl = $photoUrl ?: asset('images/default-avatar.png');
                         @endphp
                         
@@ -628,7 +604,6 @@
             const btn = document.getElementById('sidebarToggle');
             const LS_KEY = 'asy_pay_sidebar_mini';
 
-            // Terapkan state tersimpan
             try {
                 const saved = localStorage.getItem(LS_KEY);
                 if (saved === '1') {
@@ -636,7 +611,6 @@
                 }
             } catch(e) {}
 
-            // Toggle manual via klik tombol
             btn?.addEventListener('click', function() {
                 sidebar.classList.toggle('mini');
                 try {
@@ -644,7 +618,6 @@
                 } catch(e) {}
             });
 
-            // Auto expand ketika mouse hover
             sidebar.addEventListener('mouseenter', () => {
                 if (sidebar.classList.contains('mini')) {
                     sidebar.classList.add('hover-open');
@@ -655,7 +628,6 @@
                 sidebar.classList.remove('hover-open');
             });
 
-            // Aksesibilitas: fokus keyboard juga membuka
             sidebar.addEventListener('focusin', () => {
                 if (sidebar.classList.contains('mini')) {
                     sidebar.classList.add('hover-open');
@@ -668,7 +640,6 @@
                 }
             });
 
-            // Auto dismiss alerts setelah 5 detik
             document.querySelectorAll('.alert').forEach(alert => {
                 setTimeout(() => {
                     alert.style.animation = 'slideDown 0.3s ease reverse';

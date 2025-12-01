@@ -19,14 +19,23 @@ Route::middleware('auth:sanctum')->group(function(){
 // === DATA UNTUK APP ===
 Route::middleware('auth:sanctum')->group(function () {
 
-    Route::get('/pembayarans', [PembayaranController::class, 'index'])->name('api.pembayarans');
-    Route::get('/riwayat',     [PembayaranController::class, 'riwayat'])->name('api.riwayat');
-});
+   // === DATA UNTUK APP ===
 
-Route::get('/test', function () {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Api berhasil terhubung ke flutter!'
-    ]);
+    Route::get('/pembayaran', [PembayaranController::class, 'index'])->name('pembayaran');
+    Route::get('/pembayaran/{id}/{nis}', [PembayaranController::class, 'show']);     // detail tagihan
+    Route::post('/pembayaran/{id}/bayar', [PembayaranController::class, 'bayar']);
+    Route::get('/riwayat',     [PembayaranController::class, 'riwayat'])->name('riwayat');
+
+   
+
+// Route::get('/test', function () {
+//     return response()->json([
+//         'status' => 'success',
+//         'message' => 'Api berhasil terhubung ke flutter!'
+//     ]);
+// });
+
+
+
 });
 

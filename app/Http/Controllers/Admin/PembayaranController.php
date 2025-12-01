@@ -5,19 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Pembayaran;
 use App\Models\KategoriPembayaran;
-use App\Models\User; // Import User agar lebih jelas
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PembayaranController extends Controller
 {
+    // Fungsi untuk menampilkan daftar pembayaran
     public function index(Request $request)
     {
+        // Menyiapkan query dasar untuk mengambil pembayaran bersama kategori dan siswa
         $query = Pembayaran::with('kategori', 'siswa');
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-
+        // ------ Filter berdasarkan pencarian umum: nama/kategori/kelas ------
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                   ->orWhere('kelas', 'like', "%{$search}%")
@@ -27,17 +29,43 @@ class PembayaranController extends Controller
             });
         }
 
-        $pembayarans = $query->orderBy('created_at', 'desc')->paginate(10);
+        // ------ Filter berdasarkan kategori ------
+        if ($request->filled('kategori')) {
+            $query->where('kategori_id', $request->kategori);
+        }
 
-        return view('admin.pembayaran.index', compact('pembayarans'));
+        // ------ Filter berdasarkan kelas ------
+        if ($request->filled('kelas')) {
+            $query->where('kelas', $request->kelas);
+        }
+
+        // Menyiapkan data untuk dropdown
+        // Ambil daftar kategori pembayaran untuk ditampilkan di filter kategori
+        $kategoriList = KategoriPembayaran::select('id', 'nama')->get();
+
+        // Ambil daftar kelas dari pengguna dengan role siswa
+        $kelasList = User::where('role', 'siswa')
+            ->whereNotNull('kelas')
+            ->select('kelas')->distinct()->orderBy('kelas')
+            ->pluck('kelas');
+
+        // Mengambil data pembayaran dengan pagination dan mengurutkan berdasarkan waktu terbaru
+        $pembayarans = $query->orderBy('created_at', 'desc')->paginate(10)
+            ->appends($request->query()); // mempertahankan query saat pagination
+
+        // Kembalikan ke view dengan data yang dibutuhkan
+        return view('admin.pembayaran.index', compact('pembayarans', 'kategoriList', 'kelasList'));
     }
 
+    // Fungsi untuk menampilkan halaman form tambah pembayaran
     public function create()
     {
+        // Mengambil semua kategori pembayaran untuk dropdown
         $kategori = KategoriPembayaran::all();
         return view('admin.pembayaran.create', compact('kategori'));
     }
 
+    // Fungsi untuk menyimpan data pembayaran baru
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -50,21 +78,23 @@ class PembayaranController extends Controller
             'foto'           => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Format jumlah dengan 2 desimal tanpa format ribuan
+        // Format jumlah menjadi dua desimal tanpa format ribuan
         $validated['jumlah'] = number_format((float) $validated['jumlah'], 2, '.', '');
 
+        // Jika ada foto, simpan foto ke storage
         if ($request->hasFile('foto')) {
             $validated['foto'] = $request->file('foto')->store('pembayaran');
         }
 
+        // Membuat pembayaran baru
         $pembayaran = Pembayaran::create($validated);
 
-        // Ambil siswa sesuai kelas, jika kosong maka semua siswa
+        // Ambil semua siswa yang sesuai dengan kelas (jika ada) untuk diberikan pembayaran
         $siswas = User::where('role', 'siswa')
             ->when($pembayaran->kelas, fn($q) => $q->where('kelas', $pembayaran->kelas))
             ->get();
 
-        // Attach pivot siswa ke pembayaran
+        // Attach siswa ke pembayaran
         $attachData = $siswas->mapWithKeys(fn($siswa) => [
             $siswa->id => [
                 'status' => 'belum lunas',
@@ -73,18 +103,22 @@ class PembayaranController extends Controller
             ]
         ])->toArray();
 
+        // Hubungkan siswa ke pembayaran
         $pembayaran->siswa()->attach($attachData);
 
         return redirect()->route('admin.pembayaran.index')
             ->with('success', 'Data pembayaran berhasil ditambahkan dan ditugaskan ke siswa.');
     }
 
+    // Fungsi untuk menampilkan form edit pembayaran
     public function edit(Pembayaran $pembayaran)
     {
+        // Ambil semua kategori pembayaran
         $kategori = KategoriPembayaran::all();
         return view('admin.pembayaran.edit', compact('pembayaran', 'kategori'));
     }
 
+    // Fungsi untuk memperbarui data pembayaran
     public function update(Request $request, Pembayaran $pembayaran)
     {
         $validated = $request->validate([
@@ -97,8 +131,10 @@ class PembayaranController extends Controller
             'foto'           => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        // Format jumlah menjadi dua desimal tanpa format ribuan
         $validated['jumlah'] = number_format((float) $validated['jumlah'], 2, '.', '');
 
+        // Jika ada foto baru, hapus foto lama dan simpan foto baru
         if ($request->hasFile('foto')) {
             if ($pembayaran->foto) {
                 Storage::delete($pembayaran->foto);
@@ -106,9 +142,10 @@ class PembayaranController extends Controller
             $validated['foto'] = $request->file('foto')->store('pembayaran');
         }
 
+        // Update data pembayaran
         $pembayaran->update($validated);
 
-        // Update pivot siswa: detach dulu baru attach ulang sesuai kelas
+        // Hapus semua data siswa yang terkait dan tambahkan lagi sesuai kelas yang dipilih
         $pembayaran->siswa()->detach();
 
         $siswas = User::where('role', 'siswa')
@@ -129,13 +166,18 @@ class PembayaranController extends Controller
             ->with('success', 'Data pembayaran berhasil diperbarui dan siswa diupdate.');
     }
 
+    // Fungsi untuk menghapus data pembayaran
     public function destroy(Pembayaran $pembayaran)
     {
+        // Hapus foto jika ada
         if ($pembayaran->foto) {
             Storage::delete($pembayaran->foto);
         }
 
+        // Hapus relasi siswa
         $pembayaran->siswa()->detach();
+        
+        // Hapus data pembayaran
         $pembayaran->delete();
 
         return redirect()->route('admin.pembayaran.index')

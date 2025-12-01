@@ -6,7 +6,13 @@
     <!-- HEADER -->
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-800">Dashboard Siswa</h1>
-        <p class="text-gray-600 mt-1">Selamat datang! Berikut ringkasan pembayaran terbaru kamu.</p>
+        <p class="text-gray-600 mt-1">
+            Selamat datang, 
+            <span class="font-semibold text-blue-600">
+                {{ auth()->user()->name }}
+            </span>!
+            Berikut ringkasan pembayaran terbaru kamu.
+        </p>
 
         <!-- GAMBAR -->
         <div class="mt-4">

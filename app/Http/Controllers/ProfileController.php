@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Barryvdh\DomPDF\Facade\Pdf; // <--- tambahkan ini
 
 class ProfileController extends Controller
 {
@@ -48,5 +49,19 @@ class ProfileController extends Controller
         $user->save();
 
         return redirect()->route('profile.index')->with('success', 'Profil berhasil diperbarui!');
+    }
+
+    // === METHOD BARU UNTUK DOWNLOAD PDF ===
+    public function downloadPdf()
+    {
+        $user = Auth::user();
+
+        // load view khusus PDF
+        $pdf = Pdf::loadView('profile.pdf', compact('user'));
+
+        // nama file misal: profil-innuu-12345.pdf
+        $fileName = 'profil-' . str_replace(' ', '-', strtolower($user->name)) . '.pdf';
+
+        return $pdf->download($fileName);
     }
 }
