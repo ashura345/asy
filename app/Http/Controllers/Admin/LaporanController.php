@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
-use App\Exports\PembayaranExport;
-use App\Mail\TunggakanPembayaranMail;
+use App\Exports\PembayaranExport; // Pastikan file ini ada
+use App\Mail\TunggakanPembayaranMail; // Pastikan file ini ada
+use Carbon\Carbon;
 
 class LaporanController extends Controller
 {
@@ -17,11 +18,17 @@ class LaporanController extends Controller
     {
         $start  = $request->start_date;
         $end    = $request->end_date;
-        $mode   = $request->get('mode', 'lunas'); // 'lunas' atau 'tunggakan'
-        $kelasFilter = $request->get('kelas');
-        $pembayaranFilter = $request->get('pembayaran_id');
+        $mode   = $request->get('mode', 'lunas'); // Default 'lunas'
 
-        // --- dropdown data untuk filter kelas & pembayaran (dipakai di mode tunggakan) ---
+        // Paksa mode tunggakan jika akses route khusus
+        if ($request->routeIs('admin.laporan.tunggakan')) {
+            $mode = 'tunggakan';
+        }
+
+        $kelasFilter       = $request->get('kelas');
+        $pembayaranFilter  = $request->get('pembayaran_id');
+
+        // --- Data Dropdown Filter ---
         $daftarKelas = DB::table('users')
             ->whereNotNull('kelas')
             ->where('role', 'siswa')
@@ -34,12 +41,12 @@ class LaporanController extends Controller
             ->orderBy('nama')
             ->get();
 
-        // Base query join
+        // --- Base Query Join ---
         $baseQuery = DB::table('pembayaran_user')
             ->join('users', 'pembayaran_user.user_id', '=', 'users.id')
             ->join('pembayarans', 'pembayaran_user.pembayaran_id', '=', 'pembayarans.id');
 
-        // ================== MODE LUNAS (SUDAH BAYAR) ==================
+        // ================== MODE LUNAS ==================
         if ($mode === 'lunas') {
             $query = clone $baseQuery;
             $query->where('pembayaran_user.status', 'lunas');
@@ -65,18 +72,15 @@ class LaporanController extends Controller
                 ->orderByDesc('pembayaran_user.tanggal_pembayaran')
                 ->get();
         }
-
-        // ================== MODE TUNGGAKAN (BELUM LUNAS) ==================
+        // ================== MODE TUNGGAKAN ==================
         else {
             $query = clone $baseQuery;
             $query->where('pembayaran_user.status', '!=', 'lunas');
 
-            // filter per kelas
             if ($kelasFilter) {
                 $query->where('users.kelas', $kelasFilter);
             }
 
-            // filter per jenis pembayaran
             if ($pembayaranFilter) {
                 $query->where('pembayaran_user.pembayaran_id', $pembayaranFilter);
             }
@@ -95,28 +99,27 @@ class LaporanController extends Controller
                 ->get();
         }
 
-        return view('admin.laporan.index', compact(
-            'laporans',
-            'start',
-            'end',
-            'mode',
-            'daftarKelas',
-            'daftarPembayaran',
-            'kelasFilter',
-            'pembayaranFilter'
+        // Tentukan view
+        $viewName = $mode === 'tunggakan'
+            ? 'admin.laporan.tunggakan' // Sesuaikan jika nama file view tunggakan beda
+            : 'admin.laporan.index';
+
+        return view($viewName, compact(
+            'laporans', 'start', 'end', 'mode',
+            'daftarKelas', 'daftarPembayaran', 'kelasFilter', 'pembayaranFilter'
         ));
     }
 
-    // ===== Export Excel (mode LUNAS) =====
+    // ===== Export Excel =====
     public function exportExcel(Request $request)
     {
         return Excel::download(
             new PembayaranExport($request->start_date, $request->end_date),
-            'laporan_pembayaran.xlsx'
+            'laporan_pembayaran_' . date('d-m-Y') . '.xlsx'
         );
     }
 
-    // ===== Export PDF (mode LUNAS) =====
+    // ===== Export PDF (FIXED) =====
     public function exportPDF(Request $request)
     {
         $start = $request->start_date;
@@ -134,10 +137,11 @@ class LaporanController extends Controller
             ]);
         }
 
+        // PERBAIKAN: Menggunakan 'as' bukan 'sebagai'
         $laporans = $query->select([
                 'users.name as nama_siswa',
                 'users.kelas',
-                'pembayarans.nama as nama_pembayaran',
+                'pembayarans.nama as nama_pembayaran', // FIXED
                 'pembayarans.jumlah',
                 'pembayaran_user.tanggal_pembayaran as tanggal_bayar',
                 'pembayaran_user.metode',
@@ -146,12 +150,12 @@ class LaporanController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('admin.laporan.pdf', compact('laporans', 'start', 'end'))
-            ->setPaper('A4', 'landscape');
+            ->setPaper('A4', 'landscape'); // Landscape agar tabel muat
 
-        return $pdf->download('laporan_pembayaran.pdf');
+        return $pdf->download('laporan_pembayaran_' . date('d-m-Y') . '.pdf');
     }
 
-    // ===== Kirim Email Notifikasi Tunggakan =====
+    // ===== Kirim Email =====
     public function kirimEmailTunggakan($id)
     {
         $item = DB::table('pembayaran_user')
@@ -173,6 +177,7 @@ class LaporanController extends Controller
             return back()->with('error', 'Data tunggakan tidak ditemukan.');
         }
 
+        // Pastikan Mail TunggakanPembayaranMail sudah dibuat
         Mail::to($item->email)->send(new TunggakanPembayaranMail($item));
 
         return back()->with(

@@ -17,27 +17,36 @@
         <form action="{{ route('admin.pembayaran.index') }}" method="GET" id="filterPembayaranForm" class="flex flex-wrap items-center gap-4">
             {{-- Filter Kategori --}}
             <select name="kategori" id="kategoriSelect" class="border border-gray-300 rounded px-3 py-2">
-    <option value="">Semua Kategori</option>
-    @isset($kategoriList)
-        @foreach($kategoriList as $kategori)
-            <option value="{{ $kategori->id }}" {{ request('kategori') == $kategori->id ? 'selected' : '' }}>
-                {{ $kategori->nama }} <!-- Hanya nama kategori yang ditampilkan -->
-            </option>
-        @endforeach
-    @endisset
-</select>
-
-
-            {{-- Filter Kelas --}}
-            <select name="kelas" id="kelasSelect" class="border border-gray-300 rounded px-3 py-2">
-                <option value="">Semua Kelas</option>
-                @isset($kelasList)
-                    @foreach($kelasList as $kelas)
-                        <option value="{{ $kelas }}" {{ request('kelas') == $kelas ? 'selected' : '' }}>
-                            {{ $kelas }}
+                <option value="">Semua Kategori</option>
+                @isset($kategoriList)
+                    @foreach($kategoriList as $kategori)
+                        <option value="{{ $kategori->id }}" {{ request('kategori') == $kategori->id ? 'selected' : '' }}>
+                            {{ $kategori->nama }}
                         </option>
                     @endforeach
                 @endisset
+            </select>
+
+            {{-- Filter Kelas (diurutkan: kosong dulu, lalu terisi A–Z) --}}
+            @php
+                $sortedKelasList = collect($kelasList ?? [])->sort(function ($a, $b) {
+                    $aEmpty = empty($a);
+                    $bEmpty = empty($b);
+
+                    if ($aEmpty && !$bEmpty) return -1;   // a kosong, b tidak -> a dulu
+                    if (!$aEmpty && $bEmpty) return 1;    // b kosong, a tidak -> b dulu
+
+                    return strcmp($a ?? '', $b ?? '');    // sama-sama isi -> urut alfabet
+                });
+            @endphp
+
+            <select name="kelas" id="kelasSelect" class="border border-gray-300 rounded px-3 py-2">
+                <option value="">Semua Kelas</option>
+                @foreach($sortedKelasList as $kelas)
+                    <option value="{{ $kelas }}" {{ request('kelas') == $kelas ? 'selected' : '' }}>
+                        {{ $kelas ?: 'Tidak ada kelas' }}
+                    </option>
+                @endforeach
             </select>
 
             {{-- Input Pencarian --}}
@@ -70,6 +79,23 @@
         </div>
     @endif
 
+    @php
+        // Urutkan data di tabel: tanpa kelas dulu, kemudian kelas terisi A–Z
+        $sortedCollection = $pembayarans->getCollection()
+            ->sort(function ($a, $b) {
+                $aEmpty = empty($a->kelas);
+                $bEmpty = empty($b->kelas);
+
+                if ($aEmpty && !$bEmpty) return -1;
+                if (!$aEmpty && $bEmpty) return 1;
+
+                return strcmp($a->kelas ?? '', $b->kelas ?? '');
+            })
+            ->values(); // reset index ke 0,1,2...
+
+        $pembayarans->setCollection($sortedCollection);
+    @endphp
+
     {{-- Tabel Daftar Pembayaran --}}
     <div class="overflow-x-auto">
         <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
@@ -86,14 +112,21 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($pembayarans as $index => $pembayaran)
+                @forelse ($pembayarans as $pembayaran)
                     <tr class="hover:bg-gray-50">
-                        <td class="py-2 px-4 border-b">{{ $pembayarans->firstItem() + $index }}</td>
+                        {{-- Nomor urut ikut urutan tabel + pagination --}}
+                        <td class="py-2 px-4 border-b">
+                            {{ $pembayarans->firstItem() + $loop->index }}
+                        </td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->nama }}</td>
                         <td class="py-2 px-4 border-b">{{ $pembayaran->kategori->nama ?? '-' }}</td>
-                        <td class="py-2 px-4 border-b">{{ $pembayaran->kelas ?? '-' }}</td>
-                        <td class="py-2 px-4 border-b text-right">Rp {{ number_format($pembayaran->jumlah, 2, ',', '.') }}</td>
-                        <td class="py-2 px-4 border-b">{{ \Carbon\Carbon::parse($pembayaran->tanggal_buat)->format('d-m-Y') }}</td>
+                        <td class="py-2 px-4 border-b">{{ $pembayaran->kelas ?? 'Tidak ada kelas' }}</td>
+                        <td class="py-2 px-4 border-b text-right">
+                            Rp {{ number_format($pembayaran->jumlah, 2, ',', '.') }}
+                        </td>
+                        <td class="py-2 px-4 border-b">
+                            {{ \Carbon\Carbon::parse($pembayaran->tanggal_buat)->format('d-m-Y') }}
+                        </td>
                         <td class="py-2 px-4 border-b">
                             {{ $pembayaran->tanggal_tempo ? \Carbon\Carbon::parse($pembayaran->tanggal_tempo)->format('d-m-Y') : '-' }}
                         </td>
@@ -127,25 +160,20 @@
     </div>
 </div>
 
-{{-- Tambahkan script JavaScript di sini --}}
 @push('scripts')
 <script>
-    // Ambil elemen select dan form
     const kategoriSelect = document.getElementById('kategoriSelect');
     const kelasSelect = document.getElementById('kelasSelect');
     const filterPembayaranForm = document.getElementById('filterPembayaranForm');
 
-    // Fungsi untuk mengirimkan form
     const submitFilter = () => {
         filterPembayaranForm.submit();
     };
 
-    // Tambahkan event listener untuk Kategori
     if (kategoriSelect) {
         kategoriSelect.addEventListener('change', submitFilter);
     }
 
-    // Tambahkan event listener untuk Kelas
     if (kelasSelect) {
         kelasSelect.addEventListener('change', submitFilter);
     }

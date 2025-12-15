@@ -19,6 +19,7 @@ use App\Http\Controllers\Siswa\PaymentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\MidtransController;
 use App\Http\Controllers\ChartController;
+use App\Http\Controllers\ChatAIController;
 
 // === Profil umum (bukan admin/siswa) ===
 use App\Http\Controllers\ProfileController;
@@ -102,16 +103,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Laporan (Admin)
-        Route::prefix('laporan')->name('laporan.')->group(function () {
-            Route::get('/', [LaporanController::class, 'index'])->name('index');
-            Route::get('/export/excel', [LaporanController::class, 'exportExcel'])->name('export.excel');
-            Route::get('/export/pdf', [LaporanController::class, 'exportPDF'])->name('export.pdf');
-             Route::post('laporan/kirim-email/{id}', [LaporanController::class, 'kirimEmailTunggakan'])
-        ->name('laporan.kirimEmail');
-            // kirim email tunggakan
-        Route::post('laporan/kirim-email/{id}', [LaporanController::class, 'kirimEmailTunggakan'])
-        ->name('laporan.kirimEmail');
-        });
+Route::prefix('laporan')->name('laporan.')->group(function () {
+    Route::get('/', [LaporanController::class, 'index'])->name('index');
+    Route::get('/export/excel', [LaporanController::class, 'exportExcel'])->name('export.excel');
+    Route::get('/export/pdf', [LaporanController::class, 'exportPDF'])->name('export.pdf');
+    Route::get('/tunggakan', [LaporanController::class, 'index'])->name('tunggakan');
+
+    // kirim email tunggakan
+    Route::post('/kirim-email/{id}', [LaporanController::class, 'kirimEmailTunggakan'])
+        ->name('kirimEmail');
+});
+
     });
 
     // ================== SISWA ROUTES ==================
@@ -180,3 +182,7 @@ Route::get('/grafik-pembayaran', function () {
 // === ROUTE KANONIK WEBHOOK MIDTRANS (TANPA PREFIX) ===
 Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])
     ->name('midtrans.notification');
+
+    // Halaman Chat
+Route::get('/chat', [ChatAIController::class, 'view'])->name('chat.view');
+Route::post('/chat/send', [ChatAIController::class, 'chat'])->name('chat.send');
