@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Profil Siswa</title>
+    <title>Profil</title>
     <style>
         body {
             font-family: Arial;
@@ -65,7 +65,7 @@
 
 <div class="box">
 
-    <h2 style="text-align:center; margin-bottom:15px;">Profil Siswa</h2>
+    <h2 style="text-align:center; margin-bottom:15px;">Profil</h2>
 
     <div style="text-align:center; margin-bottom:20px;">
         <img src="{{ $user->foto ? asset('foto_siswa/'.$user->foto) : asset('default-avatar.png') }}"

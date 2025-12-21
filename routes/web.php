@@ -146,6 +146,10 @@ Route::prefix('laporan')->name('laporan.')->group(function () {
         Route::get('/pembayaran/{id}/generate-token', [SiswaPembayaranController::class, 'generateToken'])
             ->name('pembayaran.generateToken');
 
+            Route::post('/midtrans-webhook', [MidtransController::class, 'callback']);
+
+
+            
         // Riwayat Pembayaran (Siswa)
         Route::prefix('riwayat')->name('riwayat.')->group(function () {
             Route::get('/', [SiswaRiwayatController::class, 'index'])->name('index');
@@ -180,8 +184,8 @@ Route::get('/grafik-pembayaran', function () {
 });
 
 // === ROUTE KANONIK WEBHOOK MIDTRANS (TANPA PREFIX) ===
-Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])
-    ->name('midtrans.notification');
+Route::post('/midtrans/notification', [SiswaPembayaranController::class, 'notificationHandler'])->name('midtrans.notification');
+    
 
     // Halaman Chat
 Route::get('/chat', [ChatAIController::class, 'view'])->name('chat.view');

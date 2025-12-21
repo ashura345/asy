@@ -16,7 +16,11 @@ class SiswaPembayaranController extends Controller
 {
     public function __construct()
     {
-        // atur middleware di routes/web.php jika perlu
+        // Setup konfigurasi Midtrans di awal
+        Config::$serverKey    = config('midtrans.midtrans.server_key');
+        Config::$isProduction = config('midtrans.midtrans.is_production');
+        Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
+        Config::$is3ds        = config('midtrans.midtrans.is_3ds');
     }
 
     /** Menampilkan daftar tagihan siswa */
@@ -116,6 +120,7 @@ class SiswaPembayaranController extends Controller
     /** Webhook Midtrans */
     public function notificationHandler(Request $request)
     {
+        // Load konfigurasi Midtrans
         Config::$serverKey    = config('midtrans.midtrans.server_key');
         Config::$isProduction = config('midtrans.midtrans.is_production');
         Config::$isSanitized  = config('midtrans.midtrans.is_sanitized');
@@ -179,7 +184,7 @@ class SiswaPembayaranController extends Controller
                 return response()->json(['ok' => true]);
             }
 
-            // map payment_type -> metode (transfer/gopay/kartu-kredit/qris/...)
+            // map payment_type -> metode (transfer/gopay/kartu-kredit/qris/... )
             $metodeKey = $this->mapPaymentType($paymentType);
 
             if ($transactionStatus === 'settlement') {
@@ -202,6 +207,11 @@ class SiswaPembayaranController extends Controller
 
                 $pembayaran->update(['status' => 'Lunas']);
                 Log::info("[Midtrans] SETTLED pembayaran {$idPembayaran} user {$userId}");
+
+                // Kirim notifikasi sukses
+                return redirect()
+                    ->route('siswa.pembayaran.index')
+                    ->with('success', 'Pembayaran Transfer berhasil.');
             } elseif (in_array($transactionStatus, ['deny','cancel','expire'])) {
                 $pembayaran->siswa()->syncWithoutDetaching([
                     $userId => [
@@ -245,6 +255,7 @@ class SiswaPembayaranController extends Controller
         if ($raw === 'lunas') return 'lunas';
         if (in_array($raw, ['dibatalkan','batal','cancelled'])) return 'dibatalkan';
         return $raw;
+        
     }
 
     private function isWaiting(string $normalized): bool

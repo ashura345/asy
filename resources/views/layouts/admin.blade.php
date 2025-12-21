@@ -477,11 +477,7 @@
                         <i class="fa fa-user-circle"></i><span class="menu-text">Profil</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{{ route('chat.view') }}" data-title="Asisten AI" class="{{ request()->routeIs('chat.view') ? 'active' : '' }}">
-                        <i class="fa-solid fa-robot"></i><span class="menu-text">Asisten AI</span>
-                    </a>
-                </li>
+               
 
             @elseif($role === 'siswa')
                 <li>

@@ -20,7 +20,7 @@
         <!-- Logo -->
         <div class="mb-6">
             <a href="/">
-                <img src="{{ asset('images/logomadrasah.png') }}" alt="Logo Madrasah" class="w-20 h-13" >
+                <img src="{{ asset('images/logo.jpg') }}" alt="Logo Madrasah" class="w-20 h-13" >
             </a>
         </div>
 

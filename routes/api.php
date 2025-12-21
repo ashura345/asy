@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function(){
 
     Route::get('/getNama', [SiswaController::class, 'getNama']);
    
+    
 
 // Route::get('/test', function () {
 //     return response()->json([
